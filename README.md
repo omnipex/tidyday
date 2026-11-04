@@ -2,6 +2,11 @@
 
 A menu bar app for macOS that tidies up your day. Paste anything (meeting notes, chat logs, quick thoughts) and an on-device model sorts it into **Done**, **To-do** and **Notes**.
 
+<p align="center">
+  <img src="docs/screenshot-light.png" width="380" alt="TidyDay in light mode, showing a daily summary, to-dos and done items">
+  <img src="docs/screenshot-dark.png" width="380" alt="TidyDay in dark mode">
+</p>
+
 [繁體中文說明](#繁體中文)
 
 ## Features

@@ -155,9 +155,21 @@ final class Store: ObservableObject {
     }
 
     /// 只清掉這一天自己的檔案；之前幾天延續過來的待辦不受影響
-    func clearDay(_ day: String) {
+    /// 清除一天：檔案丟到垃圾桶（Finder 還救得回來），回傳被清掉的內容給「復原」用
+    @discardableResult
+    func clearDay(_ day: String) -> DayLog? {
+        let removed = days[day]
         days[day] = nil
-        try? FileManager.default.removeItem(at: dir.appendingPathComponent("\(day).json"))
+        let url = dir.appendingPathComponent("\(day).json")
+        if (try? FileManager.default.trashItem(at: url, resultingItemURL: nil)) == nil {
+            try? FileManager.default.removeItem(at: url)
+        }
+        return removed
+    }
+
+    func restoreDay(_ day: String, _ log: DayLog) {
+        days[day] = log
+        save(day)
     }
 
     /// 有紀錄的日期（新到舊）與項目數

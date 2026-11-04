@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="640" viewBox="0 0 1280 640">
+<defs>
+<radialGradient id="bg" cx="0.3" cy="0.4" r="0.9"><stop offset="0" stop-color="#1B2250"/><stop offset="1" stop-color="#070A1A"/></radialGradient>
+<linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#38BDF8"/><stop offset="0.5" stop-color="#6366F1"/><stop offset="1" stop-color="#A855F7"/></linearGradient>
+</defs>
+<rect width="1280" height="640" fill="url(#bg)"/>
+<text x="80" y="250" font-family="Helvetica Neue, Helvetica, Arial" font-weight="700" font-size="88" fill="#FFFFFF">TidyDay</text>
+<rect x="84" y="282" width="120" height="8" rx="4" fill="url(#g)"/>
+<text font-family="Helvetica Neue, Helvetica, Arial" font-size="32" fill="#C7CCE8">
+  <tspan x="80" y="350">Paste anything. An on-device model</tspan>
+  <tspan x="80" y="396">sorts it into done, to-do and notes.</tspan>
+</text>
+<text x="80" y="480" font-family="Helvetica Neue, Helvetica, Arial" font-size="24" fill="#8B93C4">macOS menu bar app · Apple Intelligence · open source</text>
+<image x="760" y="40" width="300" height="480" xlink:href="screenshot-light.png"/>
+<image x="930" y="120" width="300" height="480" xlink:href="screenshot-dark.png"/>
+</svg>

@@ -173,6 +173,9 @@ struct Strings {
     var layoutList: String
     var layoutTabs: String
     var backToToday: String
+    var confirmClearDetail: String
+    var undo: String
+    var restored: String
 
     func label(_ kind: Kind) -> String {
         switch kind {
@@ -223,7 +226,7 @@ extension Strings {
         ollamaLocal: "Ollama 跑在這台電腦上，內容不會離開本機。",
         missingKey: { "尚未設定 \($0) 的 API Key" }, missingModel: "尚未設定模型",
         appearance: "外觀", appearSystem: "跟隨系統", appearLight: "淺色", appearDark: "深色",
-        toggleTheme: "切換深淺色", back: "返回", pasteAndOrganize: "貼上並整理", clipboardEmpty: "剪貼簿裡沒有文字", engineShort: "本地", layout: "顯示方式", layoutList: "條列", layoutTabs: "分頁", backToToday: "回到今天"
+        toggleTheme: "切換深淺色", back: "返回", pasteAndOrganize: "貼上並整理", clipboardEmpty: "剪貼簿裡沒有文字", engineShort: "本地", layout: "顯示方式", layoutList: "條列", layoutTabs: "分頁", backToToday: "回到今天", confirmClearDetail: "這天的待辦、已完成、筆記、總結和貼上的原文都會刪除。檔案會移到垃圾桶。", undo: "復原", restored: "已復原"
     )
 
     static let zhHans = Strings(
@@ -265,7 +268,7 @@ extension Strings {
         ollamaLocal: "Ollama 运行在这台电脑上，内容不会离开本机。",
         missingKey: { "尚未设置 \($0) 的 API Key" }, missingModel: "尚未设置模型",
         appearance: "外观", appearSystem: "跟随系统", appearLight: "浅色", appearDark: "深色",
-        toggleTheme: "切换深浅色", back: "返回", pasteAndOrganize: "粘贴并整理", clipboardEmpty: "剪贴板里没有文字", engineShort: "本地", layout: "显示方式", layoutList: "列表", layoutTabs: "分页", backToToday: "回到今天"
+        toggleTheme: "切换深浅色", back: "返回", pasteAndOrganize: "粘贴并整理", clipboardEmpty: "剪贴板里没有文字", engineShort: "本地", layout: "显示方式", layoutList: "列表", layoutTabs: "分页", backToToday: "回到今天", confirmClearDetail: "这天的待办、已完成、笔记、总结和粘贴的原文都会删除。文件会移到废纸篓。", undo: "撤销", restored: "已恢复"
     )
 
     static let en = Strings(
@@ -309,7 +312,7 @@ extension Strings {
         ollamaLocal: "Ollama runs on this Mac, so nothing leaves it.",
         missingKey: { "No \($0) API key yet" }, missingModel: "No model selected yet",
         appearance: "Appearance", appearSystem: "Follow system", appearLight: "Light", appearDark: "Dark",
-        toggleTheme: "Toggle light/dark", back: "Back", pasteAndOrganize: "Paste & organize", clipboardEmpty: "The clipboard has no text", engineShort: "Local", layout: "Layout", layoutList: "List", layoutTabs: "Tabs", backToToday: "Back to today"
+        toggleTheme: "Toggle light/dark", back: "Back", pasteAndOrganize: "Paste & organize", clipboardEmpty: "The clipboard has no text", engineShort: "Local", layout: "Layout", layoutList: "List", layoutTabs: "Tabs", backToToday: "Back to today", confirmClearDetail: "This day's to-dos, done items, notes, summary and pasted text will be removed. The file goes to the Trash.", undo: "Undo", restored: "Restored"
     )
 
     static let ja = Strings(
@@ -351,7 +354,7 @@ extension Strings {
         ollamaLocal: "Ollama はこの Mac で動いているので、内容は外に出ません。",
         missingKey: { "\($0) の API キーが未設定です" }, missingModel: "モデルが未設定です",
         appearance: "外観", appearSystem: "システムに合わせる", appearLight: "ライト", appearDark: "ダーク",
-        toggleTheme: "ライト／ダークを切り替え", back: "戻る", pasteAndOrganize: "貼り付けて整理", clipboardEmpty: "クリップボードにテキストがありません", engineShort: "ローカル", layout: "表示方法", layoutList: "リスト", layoutTabs: "タブ", backToToday: "今日に戻る"
+        toggleTheme: "ライト／ダークを切り替え", back: "戻る", pasteAndOrganize: "貼り付けて整理", clipboardEmpty: "クリップボードにテキストがありません", engineShort: "ローカル", layout: "表示方法", layoutList: "リスト", layoutTabs: "タブ", backToToday: "今日に戻る", confirmClearDetail: "この日の ToDo・完了・メモ・まとめ・貼り付けた原文がすべて削除されます。ファイルはゴミ箱に移動します。", undo: "元に戻す", restored: "元に戻しました"
     )
 }
 

@@ -37,6 +37,7 @@ struct ContentView: View {
     @State private var summaryText = ""
     @State private var summaryExpanded = false
     @State private var confirmClear = false
+    @State private var undoClear: (day: String, log: DayLog)?
     @State private var showDays = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage(AppLanguage.storageKey) private var langRaw = AppLanguage.system.rawValue
@@ -85,6 +86,11 @@ struct ContentView: View {
             header
                 .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 12)
             separator.padding(.bottom, 12)
+            if confirmClear {
+                clearConfirmCard
+                    .padding(.horizontal, 16).padding(.bottom, 12)
+                    .transition(.opacity)
+            }
             inputCard
                 .padding(.horizontal, 16)
             if store.summary(on: day) != nil || editingSummary {
@@ -173,7 +179,7 @@ struct ContentView: View {
                 }
                 Button(s.openFolder) { NSWorkspace.shared.open(store.dir) }
                 Divider()
-                Button(s.clearDayMenu(lang.shortDate(day))) { confirmClear = true }
+                Button(s.clearDayMenu(lang.shortDate(day))) { withAnimation { confirmClear = true } }
             } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 14, weight: .medium))
@@ -262,12 +268,52 @@ struct ContentView: View {
             }
 
             if let message {
-                Label(message, systemImage: isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(isError ? Color.orange : .secondary)
-                    .transition(.opacity)
+                HStack(spacing: 8) {
+                    Label(message, systemImage: isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(isError ? Color.orange : .secondary)
+                    if let undo = undoClear {
+                        Button(s.undo) {
+                            store.restoreDay(undo.day, undo.log)
+                            undoClear = nil
+                            show(s.restored)
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                    }
+                }
+                .transition(.opacity)
             }
         }
+    }
+
+    /// 清除確認：放在最上面，紅色卡片，寫清楚會刪掉什麼
+    private var clearConfirmCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(s.confirmClear(lang.shortDate(day)), systemImage: "trash")
+                .font(.system(size: 13, weight: .semibold))
+            Text(s.confirmClearDetail)
+                .font(.system(size: 11.5))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer()
+                Button(s.cancel) { withAnimation { confirmClear = false } }
+                    .buttonStyle(SecondaryButtonStyle(compact: true))
+                Button(s.clearAction) {
+                    let target = day
+                    let removed = store.clearDay(target)
+                    withAnimation { confirmClear = false }
+                    show(s.cleared(lang.shortDate(target)))
+                    undoClear = removed.map { (target, $0) }
+                }
+                .buttonStyle(DestructiveButtonStyle())
+            }
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: Theme.radius).fill(Color.red.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Color.red.opacity(0.35)))
     }
 
     /// 目前用哪個模型整理：放在標題列圖示左邊的小膠囊，雲端引擎用雲朵提醒內容會送出去，點一下進設定
@@ -470,23 +516,11 @@ struct ContentView: View {
         VStack(spacing: 0) {
             separator
             HStack(spacing: 14) {
-                if confirmClear {
-                    Text(s.confirmClear(lang.shortDate(day)))
-                        .font(.system(size: 12))
-                    Spacer()
-                    FooterButton(title: s.cancel, systemName: nil) { confirmClear = false }
-                    FooterButton(title: s.clearAction, systemName: "trash", tint: .red) {
-                        store.clearDay(day)
-                        confirmClear = false
-                        show(s.cleared(lang.shortDate(day)))
-                    }
-                } else {
-                    FooterButton(title: s.generateSummary, systemName: "sparkles", action: summarize)
-                        .disabled(busy)
-                    FooterButton(title: s.copyMarkdown, systemName: "doc.on.doc", action: copyMarkdown)
-                    Spacer()
-                    FooterButton(title: s.quit, systemName: "power") { NSApp.terminate(nil) }
-                }
+                FooterButton(title: s.generateSummary, systemName: "sparkles", action: summarize)
+                    .disabled(busy)
+                FooterButton(title: s.copyMarkdown, systemName: "doc.on.doc", action: copyMarkdown)
+                Spacer()
+                FooterButton(title: s.quit, systemName: "power") { NSApp.terminate(nil) }
             }
             .padding(.horizontal, 16)
             .frame(height: 40)
@@ -581,6 +615,7 @@ struct ContentView: View {
     }
 
     private func show(_ text: String, error: Bool = false) {
+        undoClear = nil
         withAnimation(.easeOut(duration: 0.15)) {
             message = text
             isError = error
@@ -646,6 +681,17 @@ private struct PrimaryButtonBody: View {
                 .scaleEffect(configuration.isPressed ? 0.98 : 1)
                 .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
         }
+}
+
+struct DestructiveButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .frame(height: 26)
+            .background(RoundedRectangle(cornerRadius: 7).fill(Color(nsColor: .systemRed).opacity(configuration.isPressed ? 0.75 : 1)))
+    }
 }
 
 struct SecondaryButtonStyle: ButtonStyle {
