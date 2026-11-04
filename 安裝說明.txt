@@ -1,0 +1,21 @@
+每日紀錄 TidyDay — 安裝說明
+
+【需要的環境】
+- Apple 晶片的 Mac（M1 以後）
+- macOS 26 以上
+- 已開啟 Apple Intelligence（系統設定 → Apple Intelligence 與 Siri）
+  沒開也能用，只是貼上的內容不會自動分類，會原文存成筆記。
+
+【安裝】
+1. 把 TidyDay 拖到「應用程式」資料夾。
+2. 第一次打開時，macOS 會說「無法驗證開發者」而擋下來（這版沒有 Apple 開發者簽章）：
+   - 先按「完成」關掉提示
+   - 打開「系統設定 → 隱私權與安全性」，往下捲，按 TidyDay 旁的「仍要打開」，輸入密碼
+   或者在「終端機」貼上這行再打開：
+     xattr -dr com.apple.quarantine /Applications/TidyDay.app
+3. 打開後不會出現視窗，看螢幕右上角選單列的 ☑ 圖示，點開就能用。
+   第一次啟動會自動設定成開機啟動，不想要的話：⚙ → 取消「開機時啟動」。
+
+【資料】
+所有資料只存在自己的電腦：~/Library/Application Support/TidyDay/days/
+整理內容使用 Mac 內建的本地模型，不會上傳到任何地方。
