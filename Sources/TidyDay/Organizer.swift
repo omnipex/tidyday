@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import NaturalLanguage
 
 // 本地模型（Apple Foundation Models）負責把貼上的文字拆成已完成／待辦／筆記
 
@@ -10,85 +11,82 @@ enum GenKind {
     case note
 }
 
-@Generable
-struct GenItem {
-    @Guide(description: "done = already finished by the user; todo = not done yet, planned, or requested by others; note = information, ideas, decisions, data")
-    var kind: GenKind
-    @Guide(description: "One concise sentence in the output language required by the instructions; keep proper nouns, numbers, names and dates")
-    var text: String
-}
-
-@Generable
-struct GenResult {
-    var items: [GenItem]
-}
-
-@Generable
-struct GenCompleted {
-    @Guide(description: "Numbers of existing to-dos that the new content clearly says are finished; empty if none or unsure")
-    var numbers: [Int]
-}
-
 struct ParsedItem {
     var kind: Kind
     var text: String
+    /// 這一項對應的原文那一行：模型改寫時常把「今天」「明天」拿掉，時間改從原文抓
+    var source: String?
 }
 
 struct ParseOutput {
     var items: [ParsedItem] = []
     /// 對應傳入 openTodos 的索引（從 0 開始）
     var completedTodoIndexes: Set<Int> = []
+    /// ReAct 每一步的紀錄（評估用）
+    var trace: [String] = []
 }
 
 enum Organizer {
     static let chunkLimit = 1200
-    static let todoLimit = 20
 
-    // 繁中 prompt 是 11/4 用實際樣本調過的版本；其他語言用英文指示並指定輸出語言
+    // 11/7 依 eval/ 的 112 個案例重寫：重點是「看時態，不看動詞」、一句多件事要拆開、雜訊不要捏造
     static func parseInstructions(_ lang: AppLanguage) -> String {
         switch lang.resolved {
-        case .zhHant:
+        case .zhHant, .zhHans:
             return """
-            你是個人工作日誌助理。使用者會貼上任意文字（聊天紀錄、會議筆記、隨手寫的話、信件、系統訊息）。
-            把內容拆成條列項目並分類：
-            - done：使用者已經做完的事（已經、完成、修好、寄出、開完會、上線）
-            - todo：還沒做、之後要做、別人交代的事（要、記得、明天、待處理、TODO、請你）
-            - note：資訊、想法、決策、會議結論、數據、參考資料，不屬於前兩類
-            規則：
-            - 每一句有實質內容的話都要列成一項，不可以漏掉；數據、指標、決策、結論都列成 note
-            - 每項一句繁體中文，精簡但保留專有名詞、數字、人名、日期
-            - 同一件事從被提出、答應、到完成，只列一項最終狀態（例：別人請託→我說好→我說修好了，只列一項 done）
-            - 「我」指使用者；只是答應或說之後會做，算 todo，不算 done
-            - 寒暄、客套、無意義內容不用列；不要捏造原文沒有的內容
+            你是個人工作日誌助理。把使用者貼上的內容（聊天紀錄、會議筆記、隨手寫的話）拆成項目，每一項只有「一件事」。
+            拆分：
+            - 一句話裡有好幾件事（用逗號、「還要」「但」「順便」「然後」連接）就拆成好幾項，例如「X 做完了，明天要 Y」是兩項
+            - 條件或時間點不是另一件事：「X 之後記得 Y」只有一項（Y）
+            - 聊天紀錄裡，同一件事從被請託、答應到做完只列一項，用最後的狀態；別人交辦、我回「收到」「好」，那件事是 todo
+            分類時先看時態，不要只看動詞：
+            - done：原文表示已經發生（了、已經、剛、終於、搞定、（完成））
+            - todo：還沒發生（要、得、需要、記得、…前、明天、下週、待會、還沒、答應、說好），或別人請我做的事
+            - 「完成、寄出、上線、合併」本身不代表做完：「週五前完成 X」「把 X 寄出去」「X 之後要 Y」都是 todo
+            - note：資訊、數據、決策、結論、別人回報的狀況、想法；數字、比例、金額的變化（降到、成長、增加）是 note，不是 done
+            其他：
+            - 每項一句\(lang.resolved == .zhHans ? "簡體中文" : "繁體中文")，保留專有名詞、數字、人名；時間詞（明天、週五前、晚上、3 點）照原樣保留
+            - 原文裡的英文詞（budget、PR、deploy、bug）照原樣保留，不要翻成中文
+            - 「我」指使用者
+            - 寒暄、道謝、「哈哈」「好喔」不用列；整段都沒有實質內容就回傳空的 items；不要捏造原文沒有的內容
             """
         default:
             return """
-            You are a personal work-log assistant. The user pastes any text (chat logs, meeting notes, quick thoughts, emails, system messages), possibly in any language.
-            Split it into list items and classify each one:
-            - done: things the user has already finished (finished, fixed, sent, shipped, had the meeting)
-            - todo: things not done yet, planned, or requested by others (need to, remember, tomorrow, TODO, please)
-            - note: information, ideas, decisions, meeting conclusions, metrics, data, references that are neither of the above
-            Rules:
-            - Every sentence with real content must become an item; never drop one. Metrics, numbers, decisions and conclusions are notes
-            - Write every item as one concise sentence in \(lang.promptLanguage), keeping proper nouns, numbers, names and dates
-            - If one thing goes from requested, to promised, to finished, list only one item with its final state
-            - "I" means the user; merely promising or planning to do something is todo, not done
-            - Skip greetings, small talk and meaningless content; never invent anything not in the text
+            You are a personal work-log assistant. Split what the user pastes (chat logs, meeting notes, quick thoughts) into items, each item exactly one thing.
+            Splitting:
+            - If one sentence holds several things (joined by commas, "but", "and also", "then"), split them: "did X, will do Y tomorrow" is two items
+            - A condition or point in time is not a separate thing: "after X, remember to Y" is one item (Y)
+            - In chat logs, one thing that goes from requested to promised to finished is one item with its final state; if someone asks and the user replies "got it" or "ok", it is a todo
+            Classify by tense, not by the verb:
+            - done: the text says it already happened (finished, fixed, sent, already, just, past tense)
+            - todo: it has not happened yet (need to, will, by Friday, tomorrow, remember, haven't, promised), or someone asked the user to do it
+            - "send", "finish", "ship" alone do not mean done: "send X by Friday" and "finish X this month" are todo
+            - note: information, data, decisions, conclusions, status reported by others, ideas; changes in numbers, rates or amounts (dropped to, grew by) are notes, not done
+            Other rules:
+            - Write each item as one concise sentence in \(lang.promptLanguage), keeping names, numbers and time words (tomorrow, by Friday, tonight, 3 pm) as written
+            - Keep words from other languages exactly as written; do not translate them
+            - "I" means the user
+            - Skip greetings, thanks and small talk; if there is no real content, return empty items; never invent anything not in the text
             """
         }
     }
 
-    static func completionInstructions(_ lang: AppLanguage) -> String {
+    /// ReAct 第二步：時態有矛盾時，只針對那一句再確認一次
+    static func checkInstructions(_ lang: AppLanguage) -> String {
         switch lang.resolved {
-        case .zhHant:
+        case .zhHant, .zhHans:
             return """
-            你負責比對待辦清單。判斷使用者貼上的新內容，是否明確表示某些既有待辦已經做完。
-            只有新內容清楚說已完成（寄出了、做完了、修好了、已上線）才算；只是提到、正在做、打算做都不算。
+            你判斷一句話描述的事，在使用者寫下時是否已經做完。看時態，不要只看動詞。
+            - done：已經發生（了、已經、剛、終於、搞定）
+            - todo：還沒發生（要、得、記得、…前、明天、還沒、答應、說好），或別人請使用者做的事。「把 X 寄出去」「週五前完成 X」是 todo
+            - note：只是資訊或別人的狀況
             """
         default:
             return """
-            You compare a to-do list against new content. Decide whether the new content clearly says some existing to-dos are finished.
-            Count it only when the content clearly says it is done (sent, finished, fixed, shipped); merely mentioning, working on, or planning it does not count.
+            You decide whether the thing a sentence describes had already happened when the user wrote it. Judge by tense, not by the verb.
+            - done: it already happened (finished, fixed, sent, already, past tense)
+            - todo: it has not happened yet (need to, will, by Friday, tomorrow, remember, haven't, promised), or someone asked the user to do it. "Send X" and "finish X by Friday" are todo
+            - note: just information or someone else's status
             """
         }
     }
@@ -112,7 +110,7 @@ enum Organizer {
     static let options = GenerationOptions(maximumResponseTokens: 1000)
 
     /// 失敗時換新 session 重試一次（模型輸出有隨機性，重試通常就會過）
-    private static func withRetry<T>(_ body: () async throws -> T) async throws -> T {
+    static func withRetry<T>(_ body: () async throws -> T) async throws -> T {
         do { return try await body() } catch { return try await body() }
     }
 
@@ -127,10 +125,12 @@ enum Organizer {
                 "items": [
                     "type": "object",
                     "properties": [
+                        "quote": ["type": "string", "description": "Exact words copied from the content"],
+                        "evidence": ["type": "string", "description": "happened: / not yet: / info: plus the deciding words"],
                         "kind": ["type": "string", "enum": ["done", "todo", "note"]],
                         "text": ["type": "string"],
                     ],
-                    "required": ["kind", "text"],
+                    "required": ["quote", "evidence", "kind", "text"],
                     "additionalProperties": false,
                 ],
             ]
@@ -139,19 +139,15 @@ enum Organizer {
         "additionalProperties": false,
     ]
 
-    static let completedSchema: [String: Any] = [
+    static let checkSchema: [String: Any] = [
         "type": "object",
-        "properties": ["numbers": ["type": "array", "items": ["type": "integer"]]],
-        "required": ["numbers"],
+        "properties": [
+            "reasoning": ["type": "string"],
+            "kind": ["type": "string", "enum": ["done", "todo", "note"]],
+        ],
+        "required": ["reasoning", "kind"],
         "additionalProperties": false,
     ]
-
-    private struct CloudItems: Decodable {
-        struct Item: Decodable { var kind: String; var text: String }
-        var items: [Item]
-    }
-
-    private struct CloudCompleted: Decodable { var numbers: [Int] }
 
     /// nil 表示可以用；否則回傳給使用者看的原因
     static func unavailableReason(_ s: Strings, engine: Engine = .current) -> String? {
@@ -170,68 +166,63 @@ enum Organizer {
         }
     }
 
-    static func parse(_ text: String, openTodos: [String], lang: AppLanguage, engine: Engine = .current) async throws -> ParseOutput {
+    /// 輸出語言跟著貼上的內容：有假名→日文；有漢字→中文（繁簡交給系統判斷）；其他用系統偵測，判斷不出來才用介面語言。
+    /// 實測：介面是英文時貼繁中，模型會輸出簡體；中英夾雜時系統偵測常誤判（例：判成印尼文），所以先看文字種類
+    static func contentLanguage(_ text: String, fallback: AppLanguage) -> AppLanguage {
+        let scalars = text.unicodeScalars
+        if scalars.contains(where: { (0x3040...0x30FF).contains($0.value) }) { return .ja }
+        if scalars.contains(where: { (0x4E00...0x9FFF).contains($0.value) }) {
+            let r = NLLanguageRecognizer()
+            r.languageConstraints = [.traditionalChinese, .simplifiedChinese]
+            r.processString(text)
+            return r.dominantLanguage == .simplifiedChinese ? .zhHans : .zhHant
+        }
+        let r = NLLanguageRecognizer()
+        r.processString(text)
+        return r.dominantLanguage == .english ? .en : fallback
+    }
+
+    static func parse(_ text: String, openTodos: [String], lang uiLang: AppLanguage, engine: Engine = .current) async throws -> ParseOutput {
+        let lang = contentLanguage(text, fallback: uiLang)
         let cloud = engine == .apple ? nil : CloudConfig.load(engine)
-        let todos = Array(openTodos.prefix(todoLimit))
+        let todos = openTodos
         var output = ParseOutput()
+        var parser = ReActParser(lang: lang, cloud: cloud)
         for chunk in chunks(of: text, limit: cloud == nil ? chunkLimit : cloudChunkLimit) {
-            var chunkItems = try await extractItems(chunk, lang: lang, cloud: cloud)
-            // 小模型偶爾會整行漏掉（實測英文最後一行常被略過）：對不上任何項目的實質內容行，原文補成筆記
-            for line in chunk.components(separatedBy: .newlines) {
-                let l = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard isSubstantial(l), !chunkItems.contains(where: { similarity(l, $0.text) >= 0.3 }) else { continue }
-                chunkItems.append(ParsedItem(kind: .note, text: l))
+            var chunkItems = try await parser.parse(chunk)
+            // 繁中偶爾還是會混出簡體字：用系統的簡轉繁再保險一次
+            if lang.resolved == .zhHant {
+                for i in chunkItems.indices {
+                    chunkItems[i].text = chunkItems[i].text.applyingTransform(StringTransform(rawValue: "Hans-Hant"), reverse: false) ?? chunkItems[i].text
+                }
+            }
+            // 時間改從原文那一行抓：對應到最像的原文行（模型改寫時常把「今天」「明天」拿掉）
+            let lines = chunk.components(separatedBy: .newlines)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            for i in chunkItems.indices {
+                let key = (chunkItems[i].source ?? "") + chunkItems[i].text
+                chunkItems[i].source = lines.count == 1 ? lines[0]
+                    : lines.max { similarity($0, key) < similarity($1, key) }.flatMap { similarity($0, key) >= 0.3 ? $0 : nil }
             }
             output.items += chunkItems
-            if !todos.isEmpty {
-                output.completedTodoIndexes.formUnion(try await completedTodos(in: chunk, todos: todos, lang: lang, cloud: cloud))
+        }
+        output.trace = parser.trace
+        // 勾掉既有待辦：每個 done 項目只對應最像的那一個待辦，重疊率夠高才算。
+        // 原本讓模型挑編號，實測本地模型幾乎一律回答第 1 項（只貼新待辦也會勾掉別的待辦），所以改用文字比對。
+        // 11/5 實測：真的做完的重疊率 0.50–0.67，誤判例子 ≤ 0.20
+        var matchedDone = Set<Int>()
+        for (i, item) in output.items.enumerated() where item.kind == .done {
+            let scores = todos.map { similarity($0, item.text) }
+            if let best = scores.indices.max(by: { scores[$0] < scores[$1] }), scores[best] >= 0.4 {
+                output.completedTodoIndexes.insert(best)
+                matchedDone.insert(i)
             }
         }
-        // 模型常把既有待辦重抄一次，或把剛完成的待辦再列成 done：跟既有待辦太像的就丟掉
-        output.items.removeAll { item in
-            todos.contains { similarity($0, item.text) >= 0.5 }
-        }
+        // 已經拿去勾待辦的 done 項目不再重複新增；模型也常把既有待辦重抄一次：跟既有待辦太像的就丟掉
+        output.items = output.items.enumerated().filter { i, item in
+            !matchedDone.contains(i) && !todos.contains { similarity($0, item.text) >= 0.5 }
+        }.map(\.element)
         return output
-    }
-
-    private static func extractItems(_ chunk: String, lang: AppLanguage, cloud: CloudConfig?) async throws -> [ParsedItem] {
-        let prompt = lang.resolved == .zhHant ? "新內容：\n<<<\n\(chunk)\n>>>" : "New content:\n<<<\n\(chunk)\n>>>"
-        let raw: [(Kind, String)]
-        if let cloud {
-            let data = try await CloudClient.json(cloud, system: parseInstructions(lang), prompt: prompt, schema: parseSchema)
-            raw = try JSONDecoder().decode(CloudItems.self, from: data).items
-                .map { (Kind(rawValue: $0.kind.lowercased()) ?? .note, $0.text) }
-        } else {
-            let response = try await withRetry {
-                try await LanguageModelSession(instructions: parseInstructions(lang))
-                    .respond(to: prompt, generating: GenResult.self, options: options)
-            }
-            raw = response.content.items.map { (Kind($0.kind), $0.text) }
-        }
-        return raw.compactMap { kind, text in
-            let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            return t.isEmpty ? nil : ParsedItem(kind: kind, text: t)
-        }
-    }
-
-    private static func completedTodos(in chunk: String, todos: [String], lang: AppLanguage, cloud: CloudConfig?) async throws -> Set<Int> {
-        let numbered = todos.enumerated()
-            .map { "\($0.offset + 1). \(String($0.element.prefix(40)))" }
-            .joined(separator: "\n")
-        let prompt = lang.resolved == .zhHant
-            ? "既有待辦：\n\(numbered)\n\n新內容：\n<<<\n\(chunk)\n>>>"
-            : "Existing to-dos:\n\(numbered)\n\nNew content:\n<<<\n\(chunk)\n>>>"
-        let numbers: [Int]
-        if let cloud {
-            let data = try await CloudClient.json(cloud, system: completionInstructions(lang), prompt: prompt, schema: completedSchema)
-            numbers = try JSONDecoder().decode(CloudCompleted.self, from: data).numbers
-        } else {
-            numbers = try await withRetry {
-                try await LanguageModelSession(instructions: completionInstructions(lang))
-                    .respond(to: prompt, generating: GenCompleted.self, options: options)
-            }.content.numbers
-        }
-        return Set(numbers.filter { $0 >= 1 && $0 <= todos.count }.map { $0 - 1 })
     }
 
     /// 夠長才算實質內容：中日韓文 8 個字以上，其他語言 4 個字以上

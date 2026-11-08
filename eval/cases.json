@@ -1,0 +1,1433 @@
+[
+ {
+  "id": "td-01",
+  "cat": "待辦-期限",
+  "text": "週五前把預算草稿寄出去",
+  "expect": [
+   [
+    "todo",
+    "預算"
+   ]
+  ]
+ },
+ {
+  "id": "td-02",
+  "cat": "待辦-期限",
+  "text": "明天要交季報",
+  "expect": [
+   [
+    "todo",
+    "季報"
+   ]
+  ]
+ },
+ {
+  "id": "td-03",
+  "cat": "待辦-期限",
+  "text": "記得繳電話費",
+  "expect": [
+   [
+    "todo",
+    "電話費"
+   ]
+  ]
+ },
+ {
+  "id": "td-04",
+  "cat": "待辦-期限",
+  "text": "下週一前要把簡報給主管看",
+  "expect": [
+   [
+    "todo",
+    "簡報"
+   ]
+  ]
+ },
+ {
+  "id": "td-05",
+  "cat": "待辦-期限",
+  "text": "待會要打給客戶確認報價",
+  "expect": [
+   [
+    "todo",
+    "報價"
+   ]
+  ]
+ },
+ {
+  "id": "td-06",
+  "cat": "待辦-期限",
+  "text": "晚點把會議記錄整理好寄給大家",
+  "expect": [
+   [
+    "todo",
+    "會議記錄"
+   ]
+  ]
+ },
+ {
+  "id": "td-07",
+  "cat": "待辦-期限",
+  "text": "月底前完成年度考核",
+  "expect": [
+   [
+    "todo",
+    "考核"
+   ]
+  ]
+ },
+ {
+  "id": "td-08",
+  "cat": "待辦-期限",
+  "text": "把合約寄出去",
+  "expect": [
+   [
+    "todo",
+    "合約"
+   ]
+  ]
+ },
+ {
+  "id": "td-09",
+  "cat": "待辦-期限",
+  "text": "今天下班前把 PR 合併",
+  "expect": [
+   [
+    "todo",
+    "PR"
+   ]
+  ]
+ },
+ {
+  "id": "td-10",
+  "cat": "待辦-期限",
+  "text": "TODO: 更新 README",
+  "expect": [
+   [
+    "todo",
+    "README"
+   ]
+  ]
+ },
+ {
+  "id": "td-11",
+  "cat": "待辦-期限",
+  "text": "之後再研究一下 Redis 快取",
+  "expect": [
+   [
+    "todo",
+    "Redis"
+   ]
+  ]
+ },
+ {
+  "id": "td-12",
+  "cat": "待辦-期限",
+  "text": "週三之前要完成登入頁的測試",
+  "expect": [
+   [
+    "todo",
+    "登入"
+   ]
+  ]
+ },
+ {
+  "id": "td-13",
+  "cat": "待辦-期限",
+  "text": "記得週末去拿乾洗的衣服",
+  "expect": [
+   [
+    "todo",
+    "衣服"
+   ]
+  ]
+ },
+ {
+  "id": "td-14",
+  "cat": "待辦-期限",
+  "text": "下午三點跟設計師開會",
+  "expect": [
+   [
+    "todo",
+    "設計師"
+   ]
+  ]
+ },
+ {
+  "id": "td-15",
+  "cat": "待辦-期限",
+  "text": "得趕快把發票報帳",
+  "expect": [
+   [
+    "todo",
+    "報帳"
+   ]
+  ]
+ },
+ {
+  "id": "td-16",
+  "cat": "待辦-期限",
+  "text": "需要申請新的測試機",
+  "expect": [
+   [
+    "todo",
+    "測試機"
+   ]
+  ]
+ },
+ {
+  "id": "td-17",
+  "cat": "待辦-期限",
+  "text": "晚上記得逛全聯買咖啡豆",
+  "expect": [
+   [
+    "todo",
+    "咖啡豆"
+   ]
+  ]
+ },
+ {
+  "id": "td-18",
+  "cat": "待辦-期限",
+  "text": "今天去李大師那拿藥",
+  "expect": [
+   [
+    "todo",
+    "李大師"
+   ]
+  ]
+ },
+ {
+  "id": "rq-01",
+  "cat": "待辦-交辦",
+  "text": "主管要我週四前提供上線時程",
+  "expect": [
+   [
+    "todo",
+    "上線時程"
+   ]
+  ]
+ },
+ {
+  "id": "rq-02",
+  "cat": "待辦-交辦",
+  "text": "Amy 請我幫忙看一下她的 PR",
+  "expect": [
+   [
+    "todo",
+    "PR"
+   ]
+  ]
+ },
+ {
+  "id": "rq-03",
+  "cat": "待辦-交辦",
+  "text": "麻煩你把報價單更新後回傳",
+  "expect": [
+   [
+    "todo",
+    "報價單"
+   ]
+  ]
+ },
+ {
+  "id": "rq-04",
+  "cat": "待辦-交辦",
+  "text": "客戶希望下週給他們 demo",
+  "expect": [
+   [
+    "todo",
+    "demo"
+   ]
+  ]
+ },
+ {
+  "id": "rq-05",
+  "cat": "待辦-交辦",
+  "text": "HR 提醒要在 11/15 前完成資安課程",
+  "expect": [
+   [
+    "todo",
+    "資安"
+   ]
+  ]
+ },
+ {
+  "id": "rq-06",
+  "cat": "待辦-交辦",
+  "text": "Kevin：可以幫我訂下週二的會議室嗎？",
+  "expect": [
+   [
+    "todo",
+    "會議室"
+   ]
+  ]
+ },
+ {
+  "id": "ng-01",
+  "cat": "待辦-否定",
+  "text": "還沒回 Kevin 的信",
+  "expect": [
+   [
+    "todo",
+    "Kevin"
+   ]
+  ]
+ },
+ {
+  "id": "ng-02",
+  "cat": "待辦-否定",
+  "text": "忘了繳信用卡費",
+  "expect": [
+   [
+    "todo",
+    "信用卡"
+   ]
+  ]
+ },
+ {
+  "id": "ng-03",
+  "cat": "待辦-否定",
+  "text": "報告來不及做完，明天繼續",
+  "expect": [
+   [
+    "todo",
+    "報告"
+   ]
+  ]
+ },
+ {
+  "id": "ng-04",
+  "cat": "待辦-否定",
+  "text": "bug 還沒修好",
+  "expect": [
+   [
+    "todo",
+    "bug"
+   ]
+  ]
+ },
+ {
+  "id": "ng-05",
+  "cat": "待辦-否定",
+  "text": "合約還在等法務看",
+  "expect": [
+   [
+    "todo|note",
+    "合約"
+   ]
+  ]
+ },
+ {
+  "id": "dn-01",
+  "cat": "已完成",
+  "text": "預算草稿寄出了",
+  "expect": [
+   [
+    "done",
+    "預算"
+   ]
+  ]
+ },
+ {
+  "id": "dn-02",
+  "cat": "已完成",
+  "text": "已經把合約寄給客戶",
+  "expect": [
+   [
+    "done",
+    "合約"
+   ]
+  ]
+ },
+ {
+  "id": "dn-03",
+  "cat": "已完成",
+  "text": "登入頁的 bug 修好了",
+  "expect": [
+   [
+    "done",
+    "bug"
+   ]
+  ]
+ },
+ {
+  "id": "dn-04",
+  "cat": "已完成",
+  "text": "搞定季報",
+  "expect": [
+   [
+    "done",
+    "季報"
+   ]
+  ]
+ },
+ {
+  "id": "dn-05",
+  "cat": "已完成",
+  "text": "剛跟客戶開完會",
+  "expect": [
+   [
+    "done",
+    "客戶"
+   ]
+  ]
+ },
+ {
+  "id": "dn-06",
+  "cat": "已完成",
+  "text": "新版本今天上線了",
+  "expect": [
+   [
+    "done",
+    "上線"
+   ]
+  ]
+ },
+ {
+  "id": "dn-07",
+  "cat": "已完成",
+  "text": "終於把年度考核填完",
+  "expect": [
+   [
+    "done",
+    "考核"
+   ]
+  ]
+ },
+ {
+  "id": "dn-08",
+  "cat": "已完成",
+  "text": "Q4 預算簡報完成",
+  "expect": [
+   [
+    "done",
+    "簡報"
+   ]
+  ]
+ },
+ {
+  "id": "dn-09",
+  "cat": "已完成",
+  "text": "回覆了 HR 的問卷",
+  "expect": [
+   [
+    "done",
+    "問卷"
+   ]
+  ]
+ },
+ {
+  "id": "dn-10",
+  "cat": "已完成",
+  "text": "把 README 更新完，也發了 PR",
+  "expect": [
+   [
+    "done",
+    "README"
+   ]
+  ]
+ },
+ {
+  "id": "dn-11",
+  "cat": "已完成",
+  "text": "上午面試了兩位候選人",
+  "expect": [
+   [
+    "done",
+    "面試"
+   ]
+  ]
+ },
+ {
+  "id": "dn-12",
+  "cat": "已完成",
+  "text": "今天把登入頁 bug 修好了",
+  "expect": [
+   [
+    "done",
+    "bug"
+   ]
+  ]
+ },
+ {
+  "id": "tk-01",
+  "cat": "易混淆",
+  "text": "答應 Amy 週五前給她回覆",
+  "expect": [
+   [
+    "todo",
+    "Amy"
+   ]
+  ]
+ },
+ {
+  "id": "tk-02",
+  "cat": "易混淆",
+  "text": "我說好，下週一前會把文件補齊",
+  "expect": [
+   [
+    "todo",
+    "文件"
+   ]
+  ]
+ },
+ {
+  "id": "tk-03",
+  "cat": "易混淆",
+  "text": "明天要開會，會議室已經訂好了",
+  "expect": [
+   [
+    "todo",
+    "開會"
+   ],
+   [
+    "done",
+    "會議室"
+   ]
+  ]
+ },
+ {
+  "id": "tk-04",
+  "cat": "易混淆",
+  "text": "報價寄出去了，等客戶回覆",
+  "expect": [
+   [
+    "done",
+    "報價"
+   ],
+   [
+    "?todo|note",
+    "客戶回覆|等客戶"
+   ]
+  ]
+ },
+ {
+  "id": "tk-05",
+  "cat": "易混淆",
+  "text": "寄出去之前要先給主管確認",
+  "expect": [
+   [
+    "todo",
+    "主管"
+   ]
+  ]
+ },
+ {
+  "id": "tk-06",
+  "cat": "易混淆",
+  "text": "上線完成後要通知客服",
+  "expect": [
+   [
+    "todo",
+    "客服"
+   ]
+  ]
+ },
+ {
+  "id": "tk-07",
+  "cat": "易混淆",
+  "text": "修完 bug 之後記得補測試",
+  "expect": [
+   [
+    "todo",
+    "測試"
+   ]
+  ]
+ },
+ {
+  "id": "tk-08",
+  "cat": "易混淆",
+  "text": "預計週五上線",
+  "expect": [
+   [
+    "todo|note",
+    "上線"
+   ]
+  ]
+ },
+ {
+  "id": "tk-09",
+  "cat": "易混淆",
+  "text": "已排定下週二做壓力測試",
+  "expect": [
+   [
+    "todo|note",
+    "壓力測試"
+   ]
+  ]
+ },
+ {
+  "id": "tk-10",
+  "cat": "易混淆",
+  "text": "把預算寄出去",
+  "expect": [
+   [
+    "todo",
+    "預算"
+   ]
+  ]
+ },
+ {
+  "id": "tk-11",
+  "cat": "易混淆",
+  "text": "週五前要寄出去的預算，今天已經寄了",
+  "expect": [
+   [
+    "done",
+    "預算"
+   ]
+  ]
+ },
+ {
+  "id": "nt-01",
+  "cat": "筆記",
+  "text": "昨天修正後當機率降到 0.4%",
+  "expect": [
+   [
+    "note",
+    "0.4%"
+   ]
+  ]
+ },
+ {
+  "id": "nt-02",
+  "cat": "筆記",
+  "text": "決定改用 PostgreSQL",
+  "expect": [
+   [
+    "note",
+    "PostgreSQL"
+   ]
+  ]
+ },
+ {
+  "id": "nt-03",
+  "cat": "筆記",
+  "text": "Kevin 的分機是 1234",
+  "expect": [
+   [
+    "note",
+    "1234"
+   ]
+  ]
+ },
+ {
+  "id": "nt-04",
+  "cat": "筆記",
+  "text": "會議結論：上線延到下個月",
+  "expect": [
+   [
+    "note",
+    "上線"
+   ]
+  ]
+ },
+ {
+  "id": "nt-05",
+  "cat": "筆記",
+  "text": "想法：可以加一個暗黑模式",
+  "expect": [
+   [
+    "note",
+    "暗黑模式"
+   ]
+  ]
+ },
+ {
+  "id": "nt-06",
+  "cat": "筆記",
+  "text": "Q3 營收成長 12%，主要來自企業方案",
+  "expect": [
+   [
+    "note",
+    "12%"
+   ]
+  ]
+ },
+ {
+  "id": "nt-07",
+  "cat": "筆記",
+  "text": "新同事 Lisa 下週一報到，負責後端",
+  "expect": [
+   [
+    "note|todo",
+    "Lisa"
+   ]
+  ]
+ },
+ {
+  "id": "nt-08",
+  "cat": "筆記",
+  "text": "測試環境的帳號是 qa@example.com",
+  "expect": [
+   [
+    "note",
+    "qa@example.com"
+   ]
+  ]
+ },
+ {
+  "id": "nt-09",
+  "cat": "筆記",
+  "text": "客戶反映 iOS 版會閃退",
+  "expect": [
+   [
+    "note|todo",
+    "閃退"
+   ]
+  ]
+ },
+ {
+  "id": "ns-01",
+  "cat": "雜訊",
+  "text": "早安",
+  "expect": []
+ },
+ {
+  "id": "ns-02",
+  "cat": "雜訊",
+  "text": "謝謝你～",
+  "expect": []
+ },
+ {
+  "id": "ns-03",
+  "cat": "雜訊",
+  "text": "哈哈好喔",
+  "expect": []
+ },
+ {
+  "id": "ml-01",
+  "cat": "多行-聊天",
+  "text": "Amy: 可以幫我看一下 PR 嗎？\n我: 好，下午看\n我: 看完了，留了兩個 comment",
+  "expect": [
+   [
+    "done",
+    "PR"
+   ]
+  ]
+ },
+ {
+  "id": "ml-02",
+  "cat": "多行-聊天",
+  "text": "主管: 週四前給我上線時程\n我: 收到",
+  "expect": [
+   [
+    "todo",
+    "上線時程"
+   ]
+  ]
+ },
+ {
+  "id": "ml-03",
+  "cat": "多行-聊天",
+  "text": "Kevin: 報價單更新了嗎？\n我: 還沒，明天給你",
+  "expect": [
+   [
+    "todo",
+    "報價單"
+   ]
+  ]
+ },
+ {
+  "id": "ml-04",
+  "cat": "多行-聊天",
+  "text": "客服: 客戶說 iOS 會閃退\n我: 我查一下\n我: 找到了，是推播的 bug，已經修好上線",
+  "expect": [
+   [
+    "done",
+    "推播|bug|修好"
+   ],
+   [
+    "?note|todo",
+    "閃退|查一下"
+   ]
+  ]
+ },
+ {
+  "id": "ml-05",
+  "cat": "多行-會議",
+  "text": "週會紀錄\n- 上週營收 320 萬\n- 決定 12/1 上線新版\n- Amy 負責寫上線公告\n- 我要在週三前完成壓力測試",
+  "expect": [
+   [
+    "note",
+    "320"
+   ],
+   [
+    "note|todo",
+    "12/1"
+   ],
+   [
+    "note|todo",
+    "公告"
+   ],
+   [
+    "todo",
+    "壓力測試"
+   ],
+   [
+    "?note",
+    "週會"
+   ]
+  ]
+ },
+ {
+  "id": "ml-06",
+  "cat": "多行-混合",
+  "text": "早上把 bug 修好了\n下午要跟 Kevin 開會\n當機率降到 0.4%\n記得繳電話費",
+  "expect": [
+   [
+    "done",
+    "bug"
+   ],
+   [
+    "todo",
+    "Kevin"
+   ],
+   [
+    "note",
+    "0.4%"
+   ],
+   [
+    "todo",
+    "電話費"
+   ]
+  ]
+ },
+ {
+  "id": "ml-07",
+  "cat": "多行-混合",
+  "text": "明天下午 3 點要跟 Kevin 開會\n週五前把預算草稿寄出去\n今天把登入頁 bug 修好了",
+  "expect": [
+   [
+    "todo",
+    "Kevin"
+   ],
+   [
+    "todo",
+    "預算"
+   ],
+   [
+    "done",
+    "bug"
+   ]
+  ]
+ },
+ {
+  "id": "ml-08",
+  "cat": "多行-混合",
+  "text": "1. 回覆 HR 問卷（完成）\n2. 準備週會簡報\n3. 跟法務確認合約條款\n4. 訂機票（已訂）",
+  "expect": [
+   [
+    "done",
+    "問卷"
+   ],
+   [
+    "todo",
+    "簡報"
+   ],
+   [
+    "todo",
+    "合約"
+   ],
+   [
+    "done",
+    "機票"
+   ]
+  ]
+ },
+ {
+  "id": "ml-09",
+  "cat": "多行-混合",
+  "text": "今天做了什麼：\n- 面試兩位候選人\n- 寫完 API 文件\n明天：\n- 跟設計師對 UI\n- 開始寫單元測試",
+  "expect": [
+   [
+    "done",
+    "面試"
+   ],
+   [
+    "done",
+    "API"
+   ],
+   [
+    "todo",
+    "UI"
+   ],
+   [
+    "todo",
+    "單元測試"
+   ]
+  ]
+ },
+ {
+  "id": "ml-10",
+  "cat": "多行-長篇",
+  "text": "早上開完站立會議\n決定登入改用 SSO\n下週一前要給客戶報價\nAmy 請我幫忙 review PR\n已經把測試環境升級到 v2\n伺服器費用每月 3 萬\n記得訂週五的會議室\n謝謝大家",
+  "expect": [
+   [
+    "done",
+    "站立會議"
+   ],
+   [
+    "note",
+    "SSO"
+   ],
+   [
+    "todo",
+    "報價"
+   ],
+   [
+    "todo",
+    "PR"
+   ],
+   [
+    "done",
+    "測試環境"
+   ],
+   [
+    "note",
+    "3 萬|3萬"
+   ],
+   [
+    "todo",
+    "會議室"
+   ]
+  ]
+ },
+ {
+  "id": "en-01",
+  "cat": "英文",
+  "text": "Send the budget draft to Kevin by Friday",
+  "expect": [
+   [
+    "todo",
+    "budget"
+   ]
+  ]
+ },
+ {
+  "id": "en-02",
+  "cat": "英文",
+  "text": "Sent the budget draft to Kevin",
+  "expect": [
+   [
+    "done",
+    "budget"
+   ]
+  ]
+ },
+ {
+  "id": "en-03",
+  "cat": "英文",
+  "text": "Need to book a room for the design review",
+  "expect": [
+   [
+    "todo",
+    "room"
+   ]
+  ]
+ },
+ {
+  "id": "en-04",
+  "cat": "英文",
+  "text": "Crash rate dropped to 0.4% after the fix",
+  "expect": [
+   [
+    "note",
+    "0.4%"
+   ]
+  ]
+ },
+ {
+  "id": "en-05",
+  "cat": "英文",
+  "text": "Finished the onboarding screens and shipped them",
+  "expect": [
+   [
+    "done",
+    "onboarding"
+   ]
+  ]
+ },
+ {
+  "id": "en-06",
+  "cat": "英文",
+  "text": "Haven't replied to Amy yet",
+  "expect": [
+   [
+    "todo",
+    "Amy"
+   ]
+  ]
+ },
+ {
+  "id": "en-07",
+  "cat": "英文",
+  "text": "Promised Kevin I'd review the PR tomorrow",
+  "expect": [
+   [
+    "todo",
+    "PR"
+   ]
+  ]
+ },
+ {
+  "id": "en-08",
+  "cat": "英文",
+  "text": "Standup: we agreed to ship the beta on Friday.\nNeed to update the pricing page before Thursday.\nRemember to book a room for the design review next week.",
+  "expect": [
+   [
+    "note|todo",
+    "beta"
+   ],
+   [
+    "todo",
+    "pricing"
+   ],
+   [
+    "todo",
+    "room"
+   ]
+  ]
+ },
+ {
+  "id": "hs-01",
+  "cat": "簡中",
+  "text": "周五前把预算草稿发出去",
+  "expect": [
+   [
+    "todo",
+    "预算"
+   ]
+  ]
+ },
+ {
+  "id": "hs-02",
+  "cat": "簡中",
+  "text": "登录页的 bug 修好了",
+  "expect": [
+   [
+    "done",
+    "bug"
+   ]
+  ]
+ },
+ {
+  "id": "hs-03",
+  "cat": "簡中",
+  "text": "明天要买咖啡豆\n下周三交报告",
+  "expect": [
+   [
+    "todo",
+    "咖啡"
+   ],
+   [
+    "todo",
+    "报告"
+   ]
+  ]
+ },
+ {
+  "id": "ja-01",
+  "cat": "日文",
+  "text": "金曜日までに予算案を送る",
+  "expect": [
+   [
+    "todo",
+    "予算"
+   ]
+  ]
+ },
+ {
+  "id": "ja-02",
+  "cat": "日文",
+  "text": "ログイン画面のバグを修正しました",
+  "expect": [
+   [
+    "done",
+    "バグ"
+   ]
+  ]
+ },
+ {
+  "id": "mx-01",
+  "cat": "中英混雜",
+  "text": "要幫 Amy review PR",
+  "expect": [
+   [
+    "todo",
+    "PR"
+   ]
+  ]
+ },
+ {
+  "id": "mx-02",
+  "cat": "中英混雜",
+  "text": "fix login bug 已經 deploy 了",
+  "expect": [
+   [
+    "done",
+    "bug|deploy"
+   ]
+  ]
+ },
+ {
+  "id": "mx-03",
+  "cat": "中英混雜",
+  "text": "週五前要把 budget 寄給 Kevin",
+  "expect": [
+   [
+    "todo",
+    "budget"
+   ]
+  ]
+ },
+ {
+  "id": "mx-04",
+  "cat": "中英混雜",
+  "text": "meeting notes 已經 share 到 Slack",
+  "expect": [
+   [
+    "done",
+    "Slack"
+   ]
+  ]
+ },
+ {
+  "id": "ct-01",
+  "cat": "勾既有待辦",
+  "text": "預算草稿寄出了",
+  "todos": [
+   "週五前把預算草稿寄給 Kevin",
+   "回覆 HR 問卷"
+  ],
+  "expectCompleted": [
+   0
+  ],
+  "expect": []
+ },
+ {
+  "id": "ct-02",
+  "cat": "勾既有待辦",
+  "text": "HR 問卷填好送出了",
+  "todos": [
+   "週五前把預算草稿寄給 Kevin",
+   "回覆 HR 問卷"
+  ],
+  "expectCompleted": [
+   1
+  ],
+  "expect": []
+ },
+ {
+  "id": "ct-03",
+  "cat": "勾既有待辦",
+  "text": "記得買咖啡\n要回信給 Amy",
+  "todos": [
+   "回覆 HR 問卷",
+   "準備週會簡報"
+  ],
+  "expectCompleted": [],
+  "expect": [
+   [
+    "todo",
+    "咖啡"
+   ],
+   [
+    "todo",
+    "Amy"
+   ]
+  ]
+ },
+ {
+  "id": "ct-04",
+  "cat": "勾既有待辦",
+  "text": "週會簡報做完了\n要幫 Amy review PR",
+  "todos": [
+   "準備週會簡報",
+   "回覆 HR 問卷"
+  ],
+  "expectCompleted": [
+   0
+  ],
+  "expect": [
+   [
+    "todo",
+    "PR"
+   ]
+  ]
+ },
+ {
+  "id": "ct-05",
+  "cat": "勾既有待辦",
+  "text": "要寄合約修改版給 Kevin",
+  "todos": [
+   "跟 Kevin 確認合約條款"
+  ],
+  "expectCompleted": [],
+  "expect": [
+   [
+    "todo",
+    "合約"
+   ]
+  ]
+ },
+ {
+  "id": "ct-06",
+  "cat": "勾既有待辦",
+  "text": "Pricing page is updated.",
+  "todos": [
+   "Update the pricing page before Thursday",
+   "Book a room"
+  ],
+  "expectCompleted": [
+   0
+  ],
+  "expect": []
+ },
+ {
+  "id": "mi-01",
+  "cat": "多意圖",
+  "text": "報告寫完了，明天要寄給主管",
+  "expect": [
+   [
+    "done",
+    "報告"
+   ],
+   [
+    "todo",
+    "主管"
+   ]
+  ]
+ },
+ {
+  "id": "mi-02",
+  "cat": "多意圖",
+  "text": "已經回 Kevin 的信，還要跟 Amy 約時間",
+  "expect": [
+   [
+    "done",
+    "Kevin"
+   ],
+   [
+    "todo",
+    "Amy"
+   ]
+  ]
+ },
+ {
+  "id": "mi-03",
+  "cat": "多意圖",
+  "text": "bug 修好了但還沒部署",
+  "expect": [
+   [
+    "done",
+    "修好"
+   ],
+   [
+    "todo",
+    "部署"
+   ]
+  ]
+ },
+ {
+  "id": "mi-04",
+  "cat": "多意圖",
+  "text": "機票買好了，飯店還沒訂",
+  "expect": [
+   [
+    "done",
+    "機票"
+   ],
+   [
+    "todo",
+    "飯店"
+   ]
+  ]
+ },
+ {
+  "id": "mi-05",
+  "cat": "多意圖",
+  "text": "今天開完週會，決定延後上線，下週要重新排時程",
+  "expect": [
+   [
+    "done",
+    "週會"
+   ],
+   [
+    "note",
+    "延後"
+   ],
+   [
+    "todo",
+    "時程"
+   ]
+  ]
+ },
+ {
+  "id": "mi-06",
+  "cat": "多意圖",
+  "text": "幫我訂會議室，順便通知 Amy 和 Kevin",
+  "expect": [
+   [
+    "todo",
+    "會議室"
+   ],
+   [
+    "todo",
+    "通知"
+   ]
+  ]
+ },
+ {
+  "id": "mi-07",
+  "cat": "多意圖",
+  "text": "PR 已合併，CI 還在跑，跑完記得通知 QA",
+  "expect": [
+   [
+    "done",
+    "PR"
+   ],
+   [
+    "note|todo",
+    "CI"
+   ],
+   [
+    "todo",
+    "QA"
+   ]
+  ]
+ },
+ {
+  "id": "mi-08",
+  "cat": "多意圖",
+  "text": "簽約完成，訂金 30 萬下週入帳",
+  "expect": [
+   [
+    "done",
+    "簽約"
+   ],
+   [
+    "note",
+    "30"
+   ]
+  ]
+ },
+ {
+  "id": "mi-09",
+  "cat": "多意圖",
+  "text": "Kevin 說報價太高，要我週五前重新估",
+  "expect": [
+   [
+    "todo",
+    "估"
+   ],
+   [
+    "?note",
+    "太高"
+   ]
+  ]
+ },
+ {
+  "id": "mi-10",
+  "cat": "多意圖",
+  "text": "看完醫生了，記得三天後回診，藥一天吃三次",
+  "expect": [
+   [
+    "done",
+    "醫生"
+   ],
+   [
+    "todo",
+    "回診"
+   ],
+   [
+    "note",
+    "一天"
+   ]
+  ]
+ },
+ {
+  "id": "mi-11",
+  "cat": "多意圖",
+  "text": "Fixed the login bug, but still need to write tests",
+  "expect": [
+   [
+    "done",
+    "bug"
+   ],
+   [
+    "todo",
+    "test"
+   ]
+  ]
+ },
+ {
+  "id": "mi-12",
+  "cat": "多意圖",
+  "text": "Booked the flights; the hotel is still pending, and the budget is 50k",
+  "expect": [
+   [
+    "done",
+    "flight"
+   ],
+   [
+    "todo",
+    "hotel"
+   ],
+   [
+    "note",
+    "50k"
+   ]
+  ]
+ },
+ {
+  "id": "mi-13",
+  "cat": "多意圖",
+  "text": "报告写完了，明天要发给老板",
+  "expect": [
+   [
+    "done",
+    "报告"
+   ],
+   [
+    "todo",
+    "老板"
+   ]
+  ]
+ },
+ {
+  "id": "mi-14",
+  "cat": "多意圖",
+  "text": "資料は送りました。明日は会議の準備をします",
+  "expect": [
+   [
+    "done",
+    "資料"
+   ],
+   [
+    "todo",
+    "会議"
+   ]
+  ]
+ },
+ {
+  "id": "mi-15",
+  "cat": "多意圖",
+  "text": "Amy 的 PR 看完了，順便把 README 改好，下午還要跟設計師對稿",
+  "expect": [
+   [
+    "done",
+    "PR"
+   ],
+   [
+    "done",
+    "README"
+   ],
+   [
+    "todo",
+    "設計師"
+   ]
+  ]
+ }
+]

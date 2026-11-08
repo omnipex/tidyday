@@ -13,6 +13,25 @@ enum Theme {
     static let stroke = Color.primary.opacity(0.10)
     static let accent = Color(nsColor: .systemBlue)
     static let radius: CGFloat = 10
+    static let hairline = Color.primary.opacity(0.08)
+    /// 面板底色：淺色模式在毛玻璃上疊一層白，後面是深色視窗時才不會整片發灰；深色模式維持透明
+    static let panelTint = adaptive(light: (0xFFFFFF, 0.62), dark: (0x000000, 0.0))
+
+    static func color(_ k: Kind) -> Color {
+        switch k {
+        case .todo: return Color(nsColor: .systemBlue)
+        case .done: return Color(nsColor: .systemGreen)
+        case .note: return Color(nsColor: .systemOrange)
+        }
+    }
+
+    static func symbol(_ k: Kind) -> String {
+        switch k {
+        case .todo: return "list.bullet"
+        case .done: return "checkmark"
+        case .note: return "text.alignleft"
+        }
+    }
 
     private static func adaptive(light: (UInt32, CGFloat), dark: (UInt32, CGFloat)) -> Color {
         func ns(_ c: (UInt32, CGFloat)) -> NSColor {
@@ -45,6 +64,7 @@ struct ContentView: View {
     @AppStorage(Engine.storageKey) private var engineRaw = Engine.apple.rawValue
     @State private var showSettings = false
     @State private var addingKind: Kind?
+    @AppStorage(GlobalHotKey.storageKey) private var hotKeyEnabled = true
     @AppStorage("layout") private var layoutRaw = "list"
     @AppStorage("collapsedSections") private var collapsedRaw = ""
     @Environment(\.colorScheme) private var colorScheme
@@ -56,7 +76,7 @@ struct ContentView: View {
 
     private func items(_ kind: Kind) -> [DayEntry] {
         switch kind {
-        case .todo: return store.openTodos(upTo: day)
+        case .todo: return store.actionableTodos(on: day)
         case .done: return store.completed(on: day)
         case .note: return store.notes(on: day)
         }
@@ -75,6 +95,7 @@ struct ContentView: View {
             }
         }
         .frame(width: 380, height: 640)
+        .background(Theme.panelTint)
         .environment(\.appLanguage, lang)
         .environment(\.locale, lang.locale)
         .onAppear { Appearance(rawValue: appearanceRaw)?.apply() }
@@ -98,6 +119,8 @@ struct ContentView: View {
                     .padding(.horizontal, 16).padding(.top, 12)
             }
             if isTabs {
+                CalendarCard()
+                    .padding(.horizontal, 16).padding(.top, 12)
                 tabs
                     .padding(.horizontal, 16).padding(.top, 14)
                 list
@@ -106,6 +129,17 @@ struct ContentView: View {
                     .padding(.top, 6)
             }
             footer
+        }
+        .onReceive(NotificationCenter.default.publisher(for: TidyMessage.name)) { n in
+            if let text = n.userInfo?["text"] as? String {
+                show(text, error: n.userInfo?["error"] as? Bool ?? false)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: GlobalHotKey.focusInput)) { _ in
+            // 快捷鍵叫出時：回到今天、游標放進輸入框
+            showSettings = false
+            day = Store.today
+            inputFocused = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
             day = Store.today
@@ -172,6 +206,8 @@ struct ContentView: View {
                 Divider()
                 Toggle(s.launchAtLogin, isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, on in setLaunchAtLogin(on) }
+                Toggle(s.globalHotKey, isOn: $hotKeyEnabled)
+                    .onChange(of: hotKeyEnabled) { _, _ in GlobalHotKey.shared.apply() }
                 Picker(s.language, selection: $langRaw) {
                     ForEach(AppLanguage.allCases) { l in
                         Text(l == .system ? s.followSystem : l.nativeName).tag(l.rawValue)
@@ -218,23 +254,27 @@ struct ContentView: View {
 
     // MARK: - 輸入
 
+    /// 輸入列：參考 Fantastical 選單列小視窗與 Todoist Quick Add —— 平常只有一行，按鈕放在框內；
+    /// 貼上多行時自動長高（最多 6 行）。空的時候右側是「貼上」，有字時變成送出鍵（Enter 或 ⌘↩）
     private var inputCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: $input)
-                    .focused($inputFocused)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(height: 22)
+                TextField(isToday ? s.placeholderToday : s.placeholderPast(lang.shortDate(day)),
+                          text: $input, axis: .vertical)
+                    .textFieldStyle(.plain)
                     .font(.system(size: 13))
-                    .scrollContentBackground(.hidden)
-                    .padding(.horizontal, 7).padding(.vertical, 8)
-                if input.isEmpty {
-                    Text(isToday ? s.placeholderToday : s.placeholderPast(lang.shortDate(day)))
-                        .font(.system(size: 13))
-                        .foregroundStyle(.tertiary)
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .allowsHitTesting(false)
-                }
+                    .lineLimit(1...6)
+                    .focused($inputFocused)
+                    .onSubmit { if !input.isEmpty && !busy { organize() } }
+                    .frame(minHeight: 22)
+                    .disabled(busy)
+                inputAction
             }
-            .frame(height: 78)
+            .padding(.leading, 12).padding(.trailing, 6).padding(.vertical, 6)
             .background(RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.field))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.radius)
@@ -242,30 +282,6 @@ struct ContentView: View {
                                   lineWidth: inputFocused ? 1.5 : 1)
             )
             .animation(.easeOut(duration: 0.15), value: inputFocused)
-
-            // 空的時候不擺一顆停用的大按鈕，直接給最常用的「貼上並整理」
-            HStack(spacing: 8) {
-                Button(action: input.isEmpty ? pasteAndOrganize : organize) {
-                    HStack(spacing: 7) {
-                        if busy {
-                            ProgressView().controlSize(.small).tint(.white)
-                        } else {
-                            Image(systemName: input.isEmpty ? "doc.on.clipboard" : "sparkles")
-                        }
-                        Text(busy ? s.organizing : (input.isEmpty ? s.pasteAndOrganize : s.organize))
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .keyboardShortcut(.return, modifiers: .command)
-                .disabled(busy)
-                .help(input.isEmpty ? s.pasteHelp : s.organizeHelp)
-
-                if !input.isEmpty && !busy {
-                    Button { input = "" } label: { Label(s.clear, systemImage: "xmark") }
-                        .buttonStyle(SecondaryButtonStyle())
-                }
-            }
 
             if let message {
                 HStack(spacing: 8) {
@@ -284,6 +300,45 @@ struct ContentView: View {
                     }
                 }
                 .transition(.opacity)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var inputAction: some View {
+        if busy {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text(s.organizing).font(.system(size: 12)).foregroundStyle(.secondary)
+            }
+            .frame(height: 24).padding(.horizontal, 6)
+        } else if input.isEmpty {
+            Button(action: pasteAndOrganize) {
+                Label(s.paste, systemImage: "doc.on.clipboard")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+                    .padding(.horizontal, 9)
+                    .frame(height: 24)
+                    .background(Capsule().fill(Theme.accent.opacity(0.13)))
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.return, modifiers: .command)
+            .help(s.pasteHelp)
+        } else {
+            HStack(spacing: 2) {
+                IconButton(systemName: "xmark", help: s.clear, size: 22) { input = "" }
+                Button(action: organize) {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 24, height: 24)
+                        .background(Circle().fill(Theme.accent))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.return, modifiers: .command)
+                .help(s.organizeHelp)
             }
         }
     }
@@ -413,59 +468,42 @@ struct ContentView: View {
         .background(RoundedRectangle(cornerRadius: 9).fill(Theme.card))
     }
 
-    /// 條列模式（預設）：三區由上往下，控制中心風格的灰色小標題，點標題收合，＋在標題右側
+    /// 條列模式（預設）：參考 Things 3／提醒事項／Todoist
+    /// 每區一個彩色圓形圖示＋標題，數量靠右；區塊之間用留白分隔；新增放在每區最後一列
     private var sections: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach([Kind.todo, .done, .note], id: \.self) { k in
-                    if k != .todo {
-                        Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 1)
-                            .padding(.horizontal, 8).padding(.top, 6)
-                    }
-                    sectionBlock(k)
-                }
+            VStack(alignment: .leading, spacing: 14) {
+                // 行事曆放在捲動區最上面：展開整個月時跟清單一起捲，不會把清單擠扁
+                CalendarCard()
+                ForEach([Kind.todo, .done, .note], id: \.self) { sectionBlock($0) }
             }
             .padding(.horizontal, 10)
-            .padding(.bottom, 8)
+            .padding(.top, 4)
+            .padding(.bottom, 10)
             .animation(.easeOut(duration: 0.18), value: collapsedRaw)
         }
         .frame(maxHeight: .infinity)
     }
 
+    /// 待辦固定有「＋ 新增待辦」列；已完成、筆記較少手動新增，滑過標題才出現 ＋
     private func sectionBlock(_ k: Kind) -> some View {
         let rows = items(k)
         let isCollapsed = collapsed.contains(k)
-        return VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Button { toggleCollapse(k) } label: {
-                    HStack(spacing: 6) {
-                        Text(s.label(k)).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
-                        Text("\(rows.count)")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.tertiary)
-                            .contentTransition(.numericText())
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(.tertiary)
-                            .rotationEffect(.degrees(isCollapsed ? 0 : 90))
-                        Spacer(minLength: 0)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                IconButton(systemName: "plus", help: s.add(s.label(k)), size: 22) {
-                    if isCollapsed { toggleCollapse(k) }
-                    addingKind = k
-                }
+        return VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(kind: k, title: s.label(k), count: rows.count, collapsed: isCollapsed,
+                          addHelp: k == .todo ? nil : s.add(s.label(k))) {
+                toggleCollapse(k)
+            } onAdd: {
+                if isCollapsed { toggleCollapse(k) }
+                addingKind = k
             }
-            .padding(.leading, 8)
-            .padding(.top, 10).padding(.bottom, 2)
-
             if !isCollapsed {
                 ForEach(rows) { EntryRow(item: $0, viewingDay: day) }
-                if addingKind == k {
+                if k == .todo {
+                    AddEntryField(kind: k, day: day)
+                } else if addingKind == k {
                     AddEntryField(kind: k, day: day, autoStart: true) { addingKind = nil }
-                        .padding(.top, 2)
+                        .padding(.top, 4)
                 }
             }
         }
@@ -551,7 +589,21 @@ struct ContentView: View {
                 let output = try await Organizer.parse(text, openTodos: todos.map(\.entry.text), lang: lang, engine: engine)
                 store.apply(output, raw: text, to: target, openTodos: todos)
                 input = ""
+                // 說清楚加到哪幾區，並把收起來的區塊打開，避免「新增了卻看不到」
+                let kinds = [Kind.todo, .done, .note].filter { k in output.items.contains { $0.kind == k } }
                 var msg = s.added(output.items.count)
+                if !kinds.isEmpty {
+                    msg += " · " + kinds.map { k in "\(s.label(k)) \(output.items.filter { $0.kind == k }.count)" }.joined(separator: ", ")
+                }
+                // 排到以後的事不會出現在「待辦」：訊息寫出排到哪天，行事曆也跳過去，避免以為沒新增
+                let endOfToday = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))!
+                if let later = output.items
+                    .compactMap({ DateHint.detect($0.text, kind: $0.kind)?.date }).filter({ $0 >= endOfToday }).min() {
+                    msg += " · " + s.scheduledOn(DueChip.label(later, allDay: true, locale: lang.locale) ?? "")
+                    NotificationCenter.default.post(name: CalendarCard.reveal, object: later)
+                }
+                let stillCollapsed = collapsed.subtracting(kinds)
+                collapsedRaw = stillCollapsed.map(\.rawValue).sorted().joined(separator: ",")
                 if !output.completedTodoIndexes.isEmpty {
                     msg += s.completedExisting(output.completedTodoIndexes.count)
                 }
@@ -778,12 +830,177 @@ struct DayPickerRow: View {
     }
 }
 
+/// 區塊標題：彩色圓形圖示＋標題，數量靠右；滑過才出現收合箭頭
+struct SectionHeader: View {
+    let color: Color
+    let symbol: String
+    let title: String
+    let count: Int
+    let collapsed: Bool
+    /// 有值時，滑過標題會在數量左邊出現 ＋
+    var addHelp: String?
+    let toggle: () -> Void
+    var onAdd: () -> Void = {}
+    @State private var hovering = false
+
+    init(kind: Kind, title: String, count: Int, collapsed: Bool, addHelp: String? = nil,
+         toggle: @escaping () -> Void, onAdd: @escaping () -> Void = {}) {
+        self.init(color: Theme.color(kind), symbol: Theme.symbol(kind), title: title, count: count,
+                  collapsed: collapsed, addHelp: addHelp, toggle: toggle, onAdd: onAdd)
+    }
+
+    init(color: Color, symbol: String, title: String, count: Int, collapsed: Bool, addHelp: String? = nil,
+         toggle: @escaping () -> Void, onAdd: @escaping () -> Void = {}) {
+        self.color = color
+        self.symbol = symbol
+        self.title = title
+        self.count = count
+        self.collapsed = collapsed
+        self.addHelp = addHelp
+        self.toggle = toggle
+        self.onAdd = onAdd
+    }
+
+    var body: some View {
+        Button(action: toggle) {
+            HStack(spacing: 8) {
+                ZStack {
+                    Circle().fill(count == 0 ? Color.secondary.opacity(0.35) : color)
+                    Image(systemName: symbol)
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 20, height: 20)
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(count == 0 ? .secondary : .primary)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.tertiary)
+                    .rotationEffect(.degrees(collapsed ? 0 : 90))
+                    .opacity(hovering || collapsed ? 1 : 0)
+                Spacer(minLength: 0)
+                if let addHelp, hovering {
+                    IconButton(systemName: "plus", help: addHelp, size: 20, action: onAdd)
+                }
+                Text("\(count)")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(count == 0 ? .tertiary : .secondary)
+                    .contentTransition(.numericText())
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .padding(.bottom, 2)
+    }
+}
+
+/// 待辦提到的時間：顯示在項目右側，過期變紅；點一下加入行事曆，加入後換成打勾的行事曆圖示
+struct DueChip: View {
+    @EnvironmentObject var store: Store
+    @Environment(\.appLanguage) private var lang
+    let item: DayEntry
+    let due: Date
+    let allDay: Bool
+    var timeOnly = false
+    var rowHovering = false
+    @State private var hovering = false
+    @State private var working = false
+
+    private var added: Bool { item.entry.eventID != nil }
+    private var overdue: Bool {
+        guard item.entry.kind == .todo else { return false }
+        return allDay ? Calendar.current.startOfDay(for: Date()) > due : Date() > due
+    }
+
+    private var text: String? {
+        timeOnly ? Self.timeLabel(due, allDay: allDay, locale: lang.locale) : Self.label(due, allDay: allDay, locale: lang.locale)
+    }
+
+    var body: some View {
+        // 只剩圖示的小框看起來像壞掉的按鈕：沒有文字時，滑過那一列才出現「加入行事曆」
+        let iconOnly = text == nil && !added
+        Button(action: add) {
+            HStack(spacing: 4) {
+                Image(systemName: added ? "calendar.badge.checkmark" : (hovering || iconOnly ? "calendar.badge.plus" : "calendar"))
+                if let text { Text(text) }
+            }
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(overdue ? Color(nsColor: .systemRed) : (hovering && !added ? Theme.accent : .secondary))
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(Capsule().fill(hovering && !added ? Theme.accent.opacity(0.12) : Theme.hover))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(added || working)
+        .onHover { hovering = $0 }
+        .help(added ? lang.strings.addedToCalendar : lang.strings.addToCalendar)
+        .opacity(iconOnly && !rowHovering ? 0 : 1)
+        .allowsHitTesting(!(iconOnly && !rowHovering))
+    }
+
+    private func add() {
+        working = true
+        Task {
+            defer { working = false }
+            do {
+                let id = try await CalendarExport.add(title: item.entry.text, start: due, allDay: allDay)
+                store.setEventID(id, for: item)
+                TidyMessage.post(lang.strings.addedToCalendar)
+            } catch CalendarExport.Failure.denied {
+                TidyMessage.post(lang.strings.calendarDenied, error: true)
+            } catch {
+                TidyMessage.post(lang.strings.calendarFailed(error.localizedDescription), error: true)
+            }
+        }
+    }
+
+    /// 只顯示幾點；整天的不顯示文字（只剩行事曆圖示）
+    static func timeLabel(_ date: Date, allDay: Bool, locale: Locale) -> String? {
+        guard !allDay else { return nil }
+        let f = DateFormatter()
+        f.locale = locale
+        f.timeStyle = .short
+        return f.string(from: date)
+    }
+
+    /// 今天、明天用相對說法（今天 15:00）；其他天寫日期與星期；整天的不寫時間
+    static func label(_ date: Date, allDay: Bool, locale: Locale) -> String? {
+        let cal = Calendar.current
+        if cal.isDateInToday(date) || cal.isDateInTomorrow(date) || cal.isDateInYesterday(date) {
+            let f = DateFormatter()
+            f.locale = locale
+            f.dateStyle = .medium
+            f.timeStyle = allDay ? .none : .short
+            f.doesRelativeDateFormatting = true
+            return f.string(from: date)
+        }
+        let f = DateFormatter()
+        f.locale = locale
+        f.setLocalizedDateFormatFromTemplate(allDay ? "MdEEE" : "MdEEEjm")
+        return f.string(from: date)
+    }
+}
+
+/// 面板內元件要顯示提示訊息時，透過通知交給 ContentView 的訊息列
+enum TidyMessage {
+    static let name = Notification.Name("TidyDayMessage")
+    static func post(_ text: String, error: Bool = false) {
+        NotificationCenter.default.post(name: name, object: nil, userInfo: ["text": text, "error": error])
+    }
+}
+
 /// 單一項目：滑過時整列高亮並出現編輯／刪除，雙擊文字也能編輯
 struct EntryRow: View {
     @EnvironmentObject var store: Store
     @Environment(\.appLanguage) private var lang
     let item: DayEntry
     let viewingDay: String
+    /// 行事曆清單已經依日期分組，時間標籤只需要顯示幾點
+    var hideDueDate = false
     @State private var hovering = false
     @State private var editing = false
     @State private var text = ""
@@ -816,6 +1033,9 @@ struct EntryRow: View {
                     .contentShape(Rectangle())
                     .onTapGesture(count: 2, perform: startEditing)
 
+                if let due = item.entry.due, item.entry.kind != .done {
+                    DueChip(item: item, due: due, allDay: item.entry.allDay ?? false, timeOnly: hideDueDate, rowHovering: hovering)
+                }
                 if hovering {
                     HStack(spacing: 0) {
                         IconButton(systemName: "pencil", help: lang.strings.edit, size: 22, action: startEditing)
@@ -823,19 +1043,25 @@ struct EntryRow: View {
                             withAnimation { store.delete(item) }
                         }
                     }
-                } else if item.day != viewingDay {
-                    Text(lang.shortDate(item.day))
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(Capsule().fill(Theme.hover))
+                } else if item.day != viewingDay && item.entry.due == nil {
+                    // 前幾天延續下來的待辦：右側小字標出原本的日期
+                    Label(lang.shortDate(item.day), systemImage: "arrow.turn.down.right")
+                        .labelStyle(.titleAndIcon)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.tertiary)
                 }
             }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 7)
-        .frame(minHeight: 34)
+        .padding(.vertical, 8)
+        .frame(minHeight: 36)
         .background(RoundedRectangle(cornerRadius: 8).fill(hovering && !editing ? Theme.hover : .clear))
+        .overlay(alignment: .bottom) {
+            // 提醒事項風格：分隔線從文字開頭起算，滑過時隱藏
+            Rectangle().fill(Theme.hairline).frame(height: 1)
+                .padding(.leading, 36).padding(.trailing, 8)
+                .opacity(hovering ? 0 : 1)
+        }
         .onHover { hovering = $0 }
         .contextMenu {
             Button(lang.strings.edit, action: startEditing)
@@ -856,30 +1082,37 @@ struct EntryRow: View {
         switch item.entry.kind {
         case .todo:
             Button { withAnimation { store.setKind(.done, for: item) } } label: {
-                Circle()
-                    .strokeBorder(hovering ? Theme.accent : Color.secondary.opacity(0.6), lineWidth: 1.5)
-                    .frame(width: 16, height: 16)
-                    .contentShape(Circle())
+                ZStack {
+                    Circle()
+                        .strokeBorder(hovering ? Theme.color(.todo) : Color.primary.opacity(0.28), lineWidth: 1.5)
+                    // 滑過時預先顯示淡淡的勾，提示點了會完成
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .heavy))
+                        .foregroundStyle(Theme.color(.todo))
+                        .opacity(hovering ? 0.8 : 0)
+                }
+                .frame(width: 17, height: 17)
+                .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .help(lang.strings.markDone)
         case .done:
             Button { withAnimation { store.setKind(.todo, for: item) } } label: {
                 ZStack {
-                    Circle().fill(Theme.accent)
+                    Circle().fill(Theme.color(.done))
                     Image(systemName: "checkmark")
-                        .font(.system(size: 8, weight: .heavy))
+                        .font(.system(size: 8.5, weight: .heavy))
                         .foregroundStyle(.white)
                 }
-                .frame(width: 16, height: 16)
+                .frame(width: 17, height: 17)
             }
             .buttonStyle(.plain)
             .help(lang.strings.markTodo)
         case .note:
-            RoundedRectangle(cornerRadius: 1.5)
-                .fill(Theme.accent.opacity(0.6))
-                .frame(width: 3, height: 14)
-                .frame(width: 16)
+            Circle()
+                .fill(Theme.color(.note))
+                .frame(width: 6, height: 6)
+                .frame(width: 17, height: 17)
         }
     }
 
@@ -935,12 +1168,16 @@ struct AddEntryField: View {
             .padding(.horizontal, 4)
         } else {
             Button { adding = true } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus").font(.system(size: 11, weight: .bold)).frame(width: 16)
-                    Text(lang.strings.add(lang.strings.label(kind))).font(.system(size: 12.5))
+                HStack(spacing: 10) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Theme.color(kind))
+                        .frame(width: 17)
+                    Text(lang.strings.add(lang.strings.label(kind)))
+                        .font(.system(size: 13))
+                        .foregroundStyle(hovering ? .primary : .tertiary)
                 }
-                .foregroundStyle(hovering ? Theme.accent : .secondary)
-                .padding(.horizontal, 8).padding(.vertical, 6)
+                .padding(.horizontal, 8).padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
             }

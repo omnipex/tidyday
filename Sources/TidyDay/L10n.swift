@@ -176,6 +176,18 @@ struct Strings {
     var confirmClearDetail: String
     var undo: String
     var restored: String
+    var globalHotKey: String
+    var addToCalendar: String
+    var addedToCalendar: String
+    var calendarDenied: String
+    var calendarFailed: (String) -> String
+    var calendarTitle: String
+    var noSchedule: String
+    var scheduledCount: (Int) -> String
+    var showMonth: String
+    var showWeek: String
+    var showYear: String
+    var scheduledOn: (String) -> String
 
     func label(_ kind: Kind) -> String {
         switch kind {
@@ -193,7 +205,7 @@ extension Strings {
         prevDay: "前一天", nextDay: "後一天",
         settings: "設定", launchAtLogin: "開機時啟動", language: "語言", followSystem: "跟隨系統",
         openFolder: "開啟資料夾", clearDayMenu: { "清除 \($0) 的紀錄…" },
-        placeholderToday: "貼上會議紀錄、聊天、隨手筆記、做完了什麼…",
+        placeholderToday: "貼上或輸入，自動整理…",
         placeholderPast: { "補記到 \($0)…" },
         organize: "整理", organizing: "整理中…", organizeHelp: "用本地模型整理（⌘↩）",
         paste: "貼上", pasteHelp: "貼上剪貼簿內容", clear: "清除",
@@ -226,7 +238,7 @@ extension Strings {
         ollamaLocal: "Ollama 跑在這台電腦上，內容不會離開本機。",
         missingKey: { "尚未設定 \($0) 的 API Key" }, missingModel: "尚未設定模型",
         appearance: "外觀", appearSystem: "跟隨系統", appearLight: "淺色", appearDark: "深色",
-        toggleTheme: "切換深淺色", back: "返回", pasteAndOrganize: "貼上並整理", clipboardEmpty: "剪貼簿裡沒有文字", engineShort: "本地", layout: "顯示方式", layoutList: "條列", layoutTabs: "分頁", backToToday: "回到今天", confirmClearDetail: "這天的待辦、已完成、筆記、總結和貼上的原文都會刪除。檔案會移到垃圾桶。", undo: "復原", restored: "已復原"
+        toggleTheme: "切換深淺色", back: "返回", pasteAndOrganize: "貼上並整理", clipboardEmpty: "剪貼簿裡沒有文字", engineShort: "本地", layout: "顯示方式", layoutList: "條列", layoutTabs: "分頁", backToToday: "回到今天", confirmClearDetail: "這天的待辦、已完成、筆記、總結和貼上的原文都會刪除。檔案會移到垃圾桶。", undo: "復原", restored: "已復原", globalHotKey: "快捷鍵叫出（⌃⌥T）", addToCalendar: "加入行事曆", addedToCalendar: "已加入行事曆", calendarDenied: "沒有行事曆權限：請到「系統設定 → 隱私權與安全性 → 行事曆」允許 TidyDay", calendarFailed: { "加入行事曆失敗：\($0)" }, calendarTitle: "行事曆", noSchedule: "這天沒有排程", scheduledCount: { "\($0) 個排程" }, showMonth: "月", showWeek: "週", showYear: "年", scheduledOn: { "排到 \($0)" }
     )
 
     static let zhHans = Strings(
@@ -235,7 +247,7 @@ extension Strings {
         prevDay: "前一天", nextDay: "后一天",
         settings: "设置", launchAtLogin: "开机时启动", language: "语言", followSystem: "跟随系统",
         openFolder: "打开文件夹", clearDayMenu: { "清除 \($0) 的记录…" },
-        placeholderToday: "粘贴会议记录、聊天、随手笔记、做完了什么…",
+        placeholderToday: "粘贴或输入，自动整理…",
         placeholderPast: { "补记到 \($0)…" },
         organize: "整理", organizing: "整理中…", organizeHelp: "用本地模型整理（⌘↩）",
         paste: "粘贴", pasteHelp: "粘贴剪贴板内容", clear: "清除",
@@ -268,7 +280,7 @@ extension Strings {
         ollamaLocal: "Ollama 运行在这台电脑上，内容不会离开本机。",
         missingKey: { "尚未设置 \($0) 的 API Key" }, missingModel: "尚未设置模型",
         appearance: "外观", appearSystem: "跟随系统", appearLight: "浅色", appearDark: "深色",
-        toggleTheme: "切换深浅色", back: "返回", pasteAndOrganize: "粘贴并整理", clipboardEmpty: "剪贴板里没有文字", engineShort: "本地", layout: "显示方式", layoutList: "列表", layoutTabs: "分页", backToToday: "回到今天", confirmClearDetail: "这天的待办、已完成、笔记、总结和粘贴的原文都会删除。文件会移到废纸篓。", undo: "撤销", restored: "已恢复"
+        toggleTheme: "切换深浅色", back: "返回", pasteAndOrganize: "粘贴并整理", clipboardEmpty: "剪贴板里没有文字", engineShort: "本地", layout: "显示方式", layoutList: "列表", layoutTabs: "分页", backToToday: "回到今天", confirmClearDetail: "这天的待办、已完成、笔记、总结和粘贴的原文都会删除。文件会移到废纸篓。", undo: "撤销", restored: "已恢复", globalHotKey: "快捷键呼出（⌃⌥T）", addToCalendar: "添加到日历", addedToCalendar: "已添加到日历", calendarDenied: "没有日历权限：请到“系统设置 → 隐私与安全性 → 日历”允许 TidyDay", calendarFailed: { "添加到日历失败：\($0)" }, calendarTitle: "日历", noSchedule: "这天没有安排", scheduledCount: { "\($0) 个安排" }, showMonth: "月", showWeek: "周", showYear: "年", scheduledOn: { "排到 \($0)" }
     )
 
     static let en = Strings(
@@ -277,7 +289,7 @@ extension Strings {
         prevDay: "Previous day", nextDay: "Next day",
         settings: "Settings", launchAtLogin: "Launch at login", language: "Language", followSystem: "Follow system",
         openFolder: "Open data folder", clearDayMenu: { "Clear \($0)…" },
-        placeholderToday: "Paste meeting notes, chats, quick thoughts, what you finished…",
+        placeholderToday: "Paste or type to organize…",
         placeholderPast: { "Add to \($0)…" },
         organize: "Organize", organizing: "Organizing…", organizeHelp: "Organize with the on-device model (⌘↩)",
         paste: "Paste", pasteHelp: "Paste from clipboard", clear: "Clear",
@@ -312,7 +324,7 @@ extension Strings {
         ollamaLocal: "Ollama runs on this Mac, so nothing leaves it.",
         missingKey: { "No \($0) API key yet" }, missingModel: "No model selected yet",
         appearance: "Appearance", appearSystem: "Follow system", appearLight: "Light", appearDark: "Dark",
-        toggleTheme: "Toggle light/dark", back: "Back", pasteAndOrganize: "Paste & organize", clipboardEmpty: "The clipboard has no text", engineShort: "Local", layout: "Layout", layoutList: "List", layoutTabs: "Tabs", backToToday: "Back to today", confirmClearDetail: "This day's to-dos, done items, notes, summary and pasted text will be removed. The file goes to the Trash.", undo: "Undo", restored: "Restored"
+        toggleTheme: "Toggle light/dark", back: "Back", pasteAndOrganize: "Paste & organize", clipboardEmpty: "The clipboard has no text", engineShort: "Local", layout: "Layout", layoutList: "List", layoutTabs: "Tabs", backToToday: "Back to today", confirmClearDetail: "This day's to-dos, done items, notes, summary and pasted text will be removed. The file goes to the Trash.", undo: "Undo", restored: "Restored", globalHotKey: "Open with ⌃⌥T", addToCalendar: "Add to Calendar", addedToCalendar: "Added to Calendar", calendarDenied: "No calendar access. Allow TidyDay in System Settings → Privacy & Security → Calendars", calendarFailed: { "Couldn't add to Calendar: \($0)" }, calendarTitle: "Calendar", noSchedule: "Nothing scheduled", scheduledCount: { "\($0) scheduled" }, showMonth: "Month", showWeek: "Week", showYear: "Year", scheduledOn: { "scheduled for \($0)" }
     )
 
     static let ja = Strings(
@@ -321,7 +333,7 @@ extension Strings {
         prevDay: "前の日", nextDay: "次の日",
         settings: "設定", launchAtLogin: "ログイン時に起動", language: "言語", followSystem: "システムに合わせる",
         openFolder: "データフォルダを開く", clearDayMenu: { "\($0) の記録を消去…" },
-        placeholderToday: "議事録、チャット、メモ、終わったことを貼り付け…",
+        placeholderToday: "貼り付けか入力で自動整理…",
         placeholderPast: { "\($0) に追加…" },
         organize: "整理", organizing: "整理中…", organizeHelp: "オンデバイスモデルで整理（⌘↩）",
         paste: "貼り付け", pasteHelp: "クリップボードから貼り付け", clear: "クリア",
@@ -354,7 +366,7 @@ extension Strings {
         ollamaLocal: "Ollama はこの Mac で動いているので、内容は外に出ません。",
         missingKey: { "\($0) の API キーが未設定です" }, missingModel: "モデルが未設定です",
         appearance: "外観", appearSystem: "システムに合わせる", appearLight: "ライト", appearDark: "ダーク",
-        toggleTheme: "ライト／ダークを切り替え", back: "戻る", pasteAndOrganize: "貼り付けて整理", clipboardEmpty: "クリップボードにテキストがありません", engineShort: "ローカル", layout: "表示方法", layoutList: "リスト", layoutTabs: "タブ", backToToday: "今日に戻る", confirmClearDetail: "この日の ToDo・完了・メモ・まとめ・貼り付けた原文がすべて削除されます。ファイルはゴミ箱に移動します。", undo: "元に戻す", restored: "元に戻しました"
+        toggleTheme: "ライト／ダークを切り替え", back: "戻る", pasteAndOrganize: "貼り付けて整理", clipboardEmpty: "クリップボードにテキストがありません", engineShort: "ローカル", layout: "表示方法", layoutList: "リスト", layoutTabs: "タブ", backToToday: "今日に戻る", confirmClearDetail: "この日の ToDo・完了・メモ・まとめ・貼り付けた原文がすべて削除されます。ファイルはゴミ箱に移動します。", undo: "元に戻す", restored: "元に戻しました", globalHotKey: "⌃⌥T で開く", addToCalendar: "カレンダーに追加", addedToCalendar: "カレンダーに追加済み", calendarDenied: "カレンダーへのアクセスがありません。システム設定 → プライバシーとセキュリティ → カレンダー で TidyDay を許可してください", calendarFailed: { "カレンダーに追加できませんでした：\($0)" }, calendarTitle: "カレンダー", noSchedule: "予定はありません", scheduledCount: { "予定 \($0) 件" }, showMonth: "月", showWeek: "週", showYear: "年", scheduledOn: { "\($0) に予定" }
     )
 }
 

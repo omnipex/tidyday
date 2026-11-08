@@ -8,9 +8,10 @@
 <rect x="84" y="282" width="120" height="8" rx="4" fill="url(#g)"/>
 <text font-family="Helvetica Neue, Helvetica, Arial" font-size="32" fill="#C7CCE8">
   <tspan x="80" y="350">Paste anything. An on-device model</tspan>
-  <tspan x="80" y="396">sorts it into done, to-do and notes.</tspan>
+  <tspan x="80" y="396">sorts it into done, to-do, notes</tspan>
+  <tspan x="80" y="442">and a calendar.</tspan>
 </text>
-<text x="80" y="480" font-family="Helvetica Neue, Helvetica, Arial" font-size="24" fill="#8B93C4">macOS menu bar app · Apple Intelligence · open source</text>
+<text x="80" y="526" font-family="Helvetica Neue, Helvetica, Arial" font-size="24" fill="#8B93C4">macOS menu bar app · Apple Intelligence · open source</text>
 <image x="760" y="40" width="300" height="480" xlink:href="screenshot-light.png"/>
 <image x="930" y="120" width="300" height="480" xlink:href="screenshot-dark.png"/>
 </svg>
