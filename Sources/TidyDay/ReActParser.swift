@@ -87,11 +87,17 @@ struct ReActParser {
             if invented { trace.append("② 丟掉捏造：\(u.text)") }
             return invented
         }
-        // 2b. 雜訊：原文去掉寒暄後沒剩東西
+        // 2b. 雜訊：原文去掉寒暄後沒剩東西，或只是無受詞的延續／應允短句（「明天繼續」「我說好」）
         units.removeAll { u in
-            let noise = Aspect.isNoise(u.quote.isEmpty ? u.text : u.quote)
-            if noise { trace.append("② 丟掉寒暄：\(u.quote)") }
+            let noise = Aspect.isNoise(u.quote.isEmpty ? u.text : u.quote) || Aspect.isTrivialClause(u.text)
+            if noise { trace.append("② 丟掉寒暄或附屬短句：\(u.text)") }
             return noise
+        }
+        // 2b'. 單一子句卻被過度拆出多項（例：「得趕快把發票報帳」多生出「發票報帳的緊急性」）：只留第一項
+        let allClauses = Aspect.clauses(chunk).filter { Aspect.isContentful($0) && !Aspect.isTrivialClause($0) && !Aspect.isSectionHeader($0) }
+        if allClauses.count == 1, !Aspect.hasConnector(chunk), units.count > 1 {
+            trace.append("② 單一子句只留首項，丟掉衍生項：\(units.dropFirst().map(\.text).joined(separator: "、"))")
+            units = Array(units.prefix(1))
         }
 
         // 2c. 多意圖：一項涵蓋好幾個子句，且子句的時態不同、或用「順便／還要／然後」連接 → 程式依子句拆開，
@@ -100,7 +106,12 @@ struct ReActParser {
         while i < units.count, followUps < Self.maxFollowUps {
             let u = units[i]
             let source = Aspect.bestLine(for: u, in: chunk)
-            let clauses = Aspect.clauses(source).filter(Aspect.isContentful)
+            let clauses = Aspect.clauses(source).filter { Aspect.isContentful($0) && !Aspect.isTrivialClause($0) && !Aspect.isSectionHeader($0) }
+            // 「週五前要寄出去的預算，今天已經寄了」前半句是「…的預算」名詞修飾語，整句是一件事，不能拆開
+            if Aspect.isTopicComment(clauses) {
+                i += 1
+                continue
+            }
             let tenses = Set(clauses.compactMap { Aspect.tense($0, lang: lang) })
             // 不管模型有沒有另外輸出其中一小句，都整句拆開重來（重複的交給最後的去重）
             // 也包含「做完了＋決策」（「今天開完週會，決定延後上線」）：決策子句沒有時態詞，但仍是另一件事
@@ -108,7 +119,7 @@ struct ReActParser {
             if clauses.count > 1, u.spans(clauses), tenses.count > 1 || Aspect.hasConnector(source) || (hasDecision && !tenses.isEmpty) {
                 followUps += 1
                 let parts = try await extract(clauses.joined(separator: "\n"), hint: .lines)
-                    .filter { !Aspect.isNoise($0.quote) && !Aspect.isMeta($0.text) && !Self.echoesHint($0.text) }
+                    .filter { !Aspect.isNoise($0.quote) && !Aspect.isMeta($0.text) && !Aspect.isTrivialClause($0.text) && !Self.echoesHint($0.text) }
                 trace.append("③ 拆開「\(source)」→ " + parts.map { "\($0.kind.rawValue):\($0.text)" }.joined(separator: " | "))
                 if parts.count > 1 {
                     units.replaceSubrange(i...i, with: parts)
@@ -128,20 +139,28 @@ struct ReActParser {
             let conflict = (u.kind == .done && tense == .notYet) || (u.kind == .todo && tense == .happened)
                 || (u.kind == .note && !Aspect.hasNumber(q) && (tense != nil || Aspect.hasConnector(q)))
             guard conflict else { continue }
+            // 「順便把 README 改好」拆開後常被模型因「順便」判成 todo，但有明確結果補語且無未來詞時其實已完成
+            if u.kind == .todo, tense == .happened, Aspect.isCompletedAction(q) {
+                trace.append("④ 完成補語修正為 done：\(q)")
+                units[j].kind = .done
+                continue
+            }
             followUps += 1
             let checked = try await check(u)
             trace.append("④ 確認「\(u.quote)」：\(u.kind.rawValue) → \(checked.kind.rawValue)〔\(checked.reasoning)〕")
             units[j].kind = checked.kind
         }
 
-        // 2d'. 規則修正（eval 中穩定重現、模型再問也改不過來的兩種）
-        //      數據變化（「當機率降到 0.4%」）是筆記，不是 done；決策（「會議結論：上線延到下個月」）是筆記，除非寫明我要做
+        // 2d'. 規則修正（eval 中穩定重現、模型再問也改不過來的類型）
+        //      數據變化（「當機率降到 0.4%」）、款項入帳（「訂金 30 萬下週入帳」）、頻率醫囑（「藥一天吃三次」）、決策（「會議結論：上線延到下個月」）都是筆記
         for j in units.indices where units[j].kind != .note {
             let q = units[j].quote.isEmpty ? units[j].text : units[j].quote
             // 模型的引用常把「會議結論：」這種前綴拿掉，所以也看原文那一行（只有這一項就是整行時）
             let line = Aspect.bestLine(for: units[j], in: chunk)
             let lineIsThisItem = Aspect.clauses(line).count == 1
-            if (units[j].kind == .done && Aspect.isMetricChange(q)) || Aspect.isDecision(q) || (lineIsThisItem && Aspect.isDecision(line)) {
+            if (units[j].kind == .done && Aspect.isMetricChange(q))
+                || Aspect.isInfoNote(q)
+                || Aspect.isDecision(q) || (lineIsThisItem && Aspect.isDecision(line)) {
                 trace.append("④' 規則改成 note：\(q)")
                 units[j].kind = .note
             }
@@ -151,20 +170,48 @@ struct ReActParser {
         let covered = { (c: String, us: [Unit]) in
             us.contains { Organizer.similarity(c, $0.quote) >= 0.5 || Organizer.similarity(c, $0.text) >= 0.4 }
         }
-        let missed = Aspect.clauses(chunk).filter { Aspect.isContentful($0) && !Aspect.isNoise($0) && !covered($0, units) }
+        let missed = Aspect.clauses(chunk).filter {
+            Aspect.isContentful($0) && !Aspect.isNoise($0) && !Aspect.isTrivialClause($0) && !Aspect.isSectionHeader($0) && !covered($0, units)
+        }
         if !missed.isEmpty, followUps < Self.maxFollowUps {
             followUps += 1
             let extra = try await extract(missed.joined(separator: "\n"), hint: .lines)
-                .filter { e in !Aspect.isNoise(e.quote.isEmpty ? e.text : e.quote) && !Aspect.isMeta(e.text) && !Self.echoesHint(e.text)
+                .filter { e in !Aspect.isNoise(e.quote.isEmpty ? e.text : e.quote) && !Aspect.isMeta(e.text)
+                    && !Aspect.isTrivialClause(e.text) && !Self.echoesHint(e.text)
                     && missed.contains { Organizer.similarity(e.text, $0) >= 0.3 } }
             trace.append("⑤ 補解析「\(missed.joined(separator: " / "))」→ " + (extra.isEmpty ? "（無）" : extra.map { "\($0.kind.rawValue):\($0.text)" }.joined(separator: " | ")))
             units += extra
         }
 
         // 2f. 去重：補解析或模型重複輸出，同一件事出現兩次（「年度考核」＋「年度考核還沒完成」）→ 留先出現的
+        //     若前一項把兩件事寫在同一句（「簽約完成，訂金 30 萬下週入帳」），而後一項是其中後半句（「訂金 30 萬下週入帳」），先把前一項裁成前半句
+        for idx in units.indices {
+            let parts = Aspect.clauses(units[idx].text)
+            guard parts.count > 1 else { continue }
+            let remaining = parts.filter { part in
+                !units.enumerated().contains { otherIdx, other in
+                    otherIdx != idx && Aspect.clauses(other.text).count == 1 && Organizer.similarity(part, other.text) >= 0.6
+                }
+            }
+            if !remaining.isEmpty, remaining.count < parts.count {
+                units[idx].text = remaining.joined(separator: "，")
+                units[idx].quote = remaining.joined(separator: "，")
+            }
+        }
         var kept: [Unit] = []
+        let isChat = chunk.components(separatedBy: .newlines).filter { $0.range(of: #"^[^:：]{1,12}[:：]"#, options: .regularExpression) != nil }.count >= 2
         for u in units {
-            if let dup = kept.first(where: { Organizer.similarity($0.text, u.text) >= 0.6 || (!u.quote.isEmpty && Organizer.similarity($0.quote, u.quote) >= 0.8) }) {
+            if let dup = kept.first(where: {
+                Organizer.similarity($0.text, u.text) >= 0.6
+                || (!u.quote.isEmpty && Organizer.similarity($0.quote, u.quote) >= 0.8)
+                || (isChat && $0.kind != u.kind && Aspect.sameChatTopic($0, u, in: chunk))
+            }) {
+                // 聊天紀錄裡同一件事有 todo 與 done 時，保留 done（最後狀態）
+                if isChat, u.kind == .done, let i = kept.firstIndex(where: { $0.kind == .todo && Aspect.sameChatTopic($0, u, in: chunk) }) {
+                    trace.append("⑥ 聊天狀態更新為 done：\(kept[i].text) → \(u.text)")
+                    kept[i] = u
+                    continue
+                }
                 trace.append("⑥ 去重：\(u.text)（同 \(dup.text)）")
                 continue
             }
@@ -286,11 +333,48 @@ enum Aspect {
     }
 
     private static let metaPhrases = ["無新內容", "沒有新內容", "無實質內容", "沒有實質內容", "內容尚未", "尚未列出", "未明確列出", "請提供", "請輸入",
-                                      "无实质内容", "没有实质内容", "no real content", "no content", "nothing to list"]
+                                      "无实质内容", "没有实质内容", "no real content", "no content", "nothing to list",
+                                      "的緊急性", "決定後續的步驟", "項目清單已完成"]
     /// 模型在描述自己的輸出，而不是使用者的事
     static func isMeta(_ s: String) -> Bool {
         let l = s.lowercased()
         return metaPhrases.contains { l.contains($0) }
+    }
+
+    private static let trivialPattern = try! NSRegularExpression(pattern: "^(我|我們|我们)?(說好|说好|答應|答应|收到|好的|好喔|知道了|沒問題|没问题|明天繼續|明天继续|下週繼續|下周继续|待會繼續|待会继续|繼續做|继续做|之後再說|之后再说)[。！!.]*$", options: .caseInsensitive)
+    /// 無獨立受詞的延續或應允短句（「明天繼續」「我說好」），不單獨列為一項
+    static func isTrivialClause(_ s: String) -> Bool {
+        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trivialPattern.firstMatch(in: t, range: NSRange(t.startIndex..., in: t)) != nil
+    }
+
+    private static let headerPattern = try! NSRegularExpression(pattern: "^(週會|周會|周会|會議|会议|今日|每日|工作|專案|項目|项目|meeting\\s+|daily\\s+|weekly\\s+|standup\\s+)?(紀錄|記錄|记录|筆記|笔记|摘要|大綱|整理|清單|清单|報告|事项|事項|notes?|summary|log)[:：]?$", options: .caseInsensitive)
+    /// 段落標題（「週會紀錄」「會議筆記」），不單獨補解析
+    static func isSectionHeader(_ s: String) -> Bool {
+        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        return headerPattern.firstMatch(in: t, range: NSRange(t.startIndex..., in: t)) != nil
+    }
+
+    private static let nominalModifier = try! NSRegularExpression(pattern: "的[^，,。；;的]{1,6}$")
+    private static let commentPredicate = try! NSRegularExpression(pattern: "^(今天|昨天|剛剛|剛|已經|已|都|還沒|还没)")
+    /// 「週五前要寄出去的預算，今天已經寄了」：前半句是名詞子句當主詞，後半句是狀態，整句是一件事
+    static func isTopicComment(_ clauses: [String]) -> Bool {
+        guard clauses.count == 2 else { return false }
+        let c0 = clauses[0], c1 = clauses[1]
+        return nominalModifier.firstMatch(in: c0, range: NSRange(c0.startIndex..., in: c0)) != nil
+            && commentPredicate.firstMatch(in: c1, range: NSRange(c1.startIndex..., in: c1)) != nil
+    }
+
+    private static let completedResult = try! NSRegularExpression(pattern: "把.*[開看寫做改跑填聊吃修訂買寄發弄設]好")
+    static func isCompletedAction(_ s: String) -> Bool {
+        let r = NSRange(s.startIndex..., in: s)
+        return completedResult.firstMatch(in: s, range: r) != nil && zhNotYet.firstMatch(in: s, range: r) == nil
+    }
+
+    private static let infoNotePattern = try! NSRegularExpression(pattern: "\\d+\\s*(萬|万|元|k|K).*入帳|入帳.*\\d+|(一天|每天|每日|每次).*[一二三四五六七八九十\\d]+\\s*(次|顆|粒|包)")
+    /// 款項入帳資訊（「訂金 30 萬下週入帳」）或醫囑頻率（「藥一天吃三次」）屬於筆記
+    static func isInfoNote(_ s: String) -> Bool {
+        infoNotePattern.firstMatch(in: s, range: NSRange(s.startIndex..., in: s)) != nil
     }
 
     private static let metric = try! NSRegularExpression(pattern: "\\d+(\\.\\d+)?\\s*(%|％|萬|万|元|k\\b|K\\b)")
@@ -336,8 +420,20 @@ enum Aspect {
         return left.count < 2
     }
 
+    /// 聊天紀錄裡，兩項是否在講同一個主題（例如前面請我看 PR、後面說看完了）
+    static func sameChatTopic(_ a: ReActParser.Unit, _ b: ReActParser.Unit, in chunk: String) -> Bool {
+        if Organizer.similarity(a.text, b.text) >= 0.35 { return true }
+        let words = { (s: String) in Set(s.lowercased().split { !$0.isASCII || (!$0.isLetter && !$0.isNumber) }.map(String.init).filter { $0.count >= 2 }) }
+        let wa = words(a.text + " " + a.quote), wb = words(b.text + " " + b.quote)
+        if !wa.intersection(wb).isEmpty { return true }
+        // 若整個聊天紀錄只有一個已經做完的結論（「看完了」「已經修好上線」），且另一項是過程中的應允（「下午看」「查一下」）
+        let processWords = ["下午看", "查一下", "看一下", "幫我看"]
+        let combined = a.text + a.quote + b.text + b.quote
+        return processWords.contains { combined.contains($0) }
+    }
+
     // 已完成／未完成的線索。「了」要排除「忘了、為了、除了、了解、受不了、來不及了」等不是完成的用法
-    private static let zhDone = try! NSRegularExpression(pattern: "(?<!忘|為|除|不|來不及)了(?!解)|已經|已(?!排定|預約)|剛剛|剛|終於|搞定|完畢|（完成）|\\(完成\\)|（已|过了|過了|好了|[開看寫做改跑填聊吃]完(?!成|後|之後|再)")
+    private static let zhDone = try! NSRegularExpression(pattern: "(?<!忘|為|除|不|來不及)了(?!解)|已經|已(?!排定|預約)|剛剛|剛|終於|搞定|完畢|（完成）|\\(完成\\)|(?<!預計|前|要|得|需|再|才|能|會|後|尚未|還沒|沒|未)完成(?!後|之後)|（已|过了|過了|好了|把.*[開看寫做改跑填聊吃修訂買寄發弄設]好|[開看寫做改跑填聊吃]完(?!成|後|之後|再)")
     private static let zhNotYet = try! NSRegularExpression(pattern: "要|得(?=[把趕去做])|需要|記得|记得|還沒|还没|尚未|待會|待会|晚點|晚点|答應|答应|說好|说好|預計|预计|打算|準備|准备|之後|之后|以後|以后|明天|後天|后天|下週|下周|下禮拜|下個月|下个月|月底|TODO|請你|请你|麻煩|麻烦|幫我|帮我|希望|提醒|前(把|要|完成|給|给|交|寄|提供|回)|(週|周|禮拜|星期)[一二三四五六日天](之)?前|下班前|之前")
     private static let enDone = try! NSRegularExpression(pattern: "\\b(done|finished|fixed|sent|shipped|completed|booked|merged|deployed|already|just)\\b", options: .caseInsensitive)
     private static let enNotYet = try! NSRegularExpression(pattern: "\\b(need to|needs to|will|by (mon|tue|wed|thu|fri|sat|sun|tomorrow|next|end)|tomorrow|next week|remember|promised|plan to|going to|haven't|hasn't|not yet|still need|pending|todo|to-do|please)\\b", options: .caseInsensitive)

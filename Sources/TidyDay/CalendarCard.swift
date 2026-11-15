@@ -105,18 +105,14 @@ struct CalendarCard: View {
     }
 
     private var periodTitle: String {
-        let f = DateFormatter()
-        f.locale = lang.locale
         switch mode {
         case .year:
-            f.setLocalizedDateFormatFromTemplate("y")
-            return f.string(from: anchor)
+            return AppLanguage.cachedFormatter(locale: lang.locale, template: "y").string(from: anchor)
         case .month:
-            f.setLocalizedDateFormatFromTemplate("yMMMM")
-            return f.string(from: anchor)
+            return AppLanguage.cachedFormatter(locale: lang.locale, template: "yMMMM").string(from: anchor)
         case .week:
             let days = visibleDays
-            f.setLocalizedDateFormatFromTemplate("Md")
+            let f = AppLanguage.cachedFormatter(locale: lang.locale, template: "Md")
             return "\(f.string(from: days.first ?? anchor)) – \(f.string(from: days.last ?? anchor))"
         }
     }
@@ -167,17 +163,22 @@ struct CalendarCard: View {
         let isToday = day == today
         let isSelected = day == selected
         let inPeriod = mode == .week || cal.isDate(day, equalTo: anchor, toGranularity: .month)
+        let hasTodo = items.contains { $0.entry.kind == .todo }
+        let hasNote = items.contains { $0.entry.kind == .note }
         return Button { selected = isSelected ? nil : day } label: {
             VStack(spacing: 3) {
                 Text("\(cal.component(.day, from: day))")
                     .font(.system(size: 12, weight: isToday || isSelected ? .bold : .regular, design: .rounded))
-                    .foregroundStyle(isToday ? Color.white : (inPeriod ? Color.primary : Color.secondary.opacity(0.5)))
+                    .foregroundStyle(isToday ? Color.white : (inPeriod ? Color.primary : Color.secondary.opacity(0.45)))
                     .frame(width: 24, height: 24)
                     .background(Circle().fill(isToday ? Theme.accent : (isSelected ? Theme.accent.opacity(0.18) : .clear)))
                     .overlay(Circle().strokeBorder(isSelected ? Theme.accent : .clear, lineWidth: 1.5))
-                Circle()
-                    .fill(dotColor(day, items))
-                    .frame(width: 4, height: 4)
+                HStack(spacing: 2) {
+                    if hasTodo { Circle().fill(Theme.color(.todo)).frame(width: 4, height: 4) }
+                    if hasNote { Circle().fill(Theme.color(.note)).frame(width: 4, height: 4) }
+                    if !hasTodo && !hasNote { Circle().fill(Color.clear).frame(width: 4, height: 4) }
+                }
+                .frame(height: 4)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 1)
@@ -186,20 +187,12 @@ struct CalendarCard: View {
         .buttonStyle(.plain)
     }
 
-    /// 小點顏色跟區塊一致：有待辦是藍色，只有筆記是橘色
-    private func dotColor(_ day: Date, _ items: [DayEntry]) -> Color {
-        guard !items.isEmpty else { return .clear }
-        return items.contains { $0.entry.kind == .todo } ? Theme.color(.todo) : Theme.color(.note)
-    }
-
     // MARK: - 年
 
     private func yearGrid(_ byDay: [Date: [DayEntry]]) -> some View {
         let year = cal.dateInterval(of: .year, for: anchor)?.start ?? anchor
         let months = (0..<12).compactMap { cal.date(byAdding: .month, value: $0, to: year) }
-        let f = DateFormatter()
-        f.locale = lang.locale
-        f.setLocalizedDateFormatFromTemplate("MMM")
+        let f = AppLanguage.cachedFormatter(locale: lang.locale, template: "MMM")
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
             ForEach(months, id: \.self) { m in
                 let count = byDay.filter { cal.isDate($0.key, equalTo: m, toGranularity: .month) }
@@ -257,17 +250,11 @@ struct CalendarCard: View {
     }
 
     private func dayHeader(_ day: Date) -> String {
-        let f = DateFormatter()
-        f.locale = lang.locale
+        let mdEEE = AppLanguage.cachedFormatter(locale: lang.locale, template: "MdEEE").string(from: day)
         if cal.isDateInToday(day) || cal.isDateInTomorrow(day) || cal.isDateInYesterday(day) {
-            f.dateStyle = .medium
-            f.doesRelativeDateFormatting = true
-            let rel = f.string(from: day)
-            f.doesRelativeDateFormatting = false
-            f.setLocalizedDateFormatFromTemplate("MdEEE")
-            return "\(rel) · \(f.string(from: day))"
+            let rel = AppLanguage.cachedFormatter(locale: lang.locale, dateStyle: .medium, relative: true).string(from: day)
+            return "\(rel) · \(mdEEE)"
         }
-        f.setLocalizedDateFormatFromTemplate("MdEEE")
-        return f.string(from: day)
+        return mdEEE
     }
 }

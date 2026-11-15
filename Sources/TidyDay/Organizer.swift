@@ -40,13 +40,13 @@ enum Organizer {
             - 條件或時間點不是另一件事：「X 之後記得 Y」只有一項（Y）
             - 聊天紀錄裡，同一件事從被請託、答應到做完只列一項，用最後的狀態；別人交辦、我回「收到」「好」，那件事是 todo
             分類時先看時態，不要只看動詞：
-            - done：原文表示已經發生（了、已經、剛、終於、搞定、（完成））
-            - todo：還沒發生（要、得、需要、記得、…前、明天、下週、待會、還沒、答應、說好），或別人請我做的事
+            - done：原文表示已經發生（了、已經、剛、終於、搞定、改好、做完、（完成））
+            - todo：還沒發生（要、得、需要、記得、…前、明天、下週、待會、還沒、答應、說好、今天去…），或別人請我做的事
             - 「完成、寄出、上線、合併」本身不代表做完：「週五前完成 X」「把 X 寄出去」「X 之後要 Y」都是 todo
-            - note：資訊、數據、決策、結論、別人回報的狀況、想法；數字、比例、金額的變化（降到、成長、增加）是 note，不是 done
+            - note：資訊、數據、決策、結論、別人回報的狀況、想法；數字、比例、金額的變化或入帳（降到、成長、入帳）、頻率說明（一天三次）是 note，不是 done
             其他：
             - 每項一句\(lang.resolved == .zhHans ? "簡體中文" : "繁體中文")，保留專有名詞、數字、人名；時間詞（明天、週五前、晚上、3 點）照原樣保留
-            - 原文裡的英文詞（budget、PR、deploy、bug）照原樣保留，不要翻成中文
+            - 原文裡的英文詞（budget、PR、deploy、bug、demo）照原樣保留，不要翻成中文
             - 「我」指使用者
             - 寒暄、道謝、「哈哈」「好喔」不用列；整段都沒有實質內容就回傳空的 items；不要捏造原文沒有的內容
             """
@@ -77,9 +77,9 @@ enum Organizer {
         case .zhHant, .zhHans:
             return """
             你判斷一句話描述的事，在使用者寫下時是否已經做完。看時態，不要只看動詞。
-            - done：已經發生（了、已經、剛、終於、搞定）
-            - todo：還沒發生（要、得、記得、…前、明天、還沒、答應、說好），或別人請使用者做的事。「把 X 寄出去」「週五前完成 X」是 todo
-            - note：只是資訊或別人的狀況
+            - done：已經發生（了、已經、剛、終於、搞定、把 X 改好／做好）
+            - todo：還沒發生（要、得、記得、…前、明天、還沒、答應、說好、今天去…），或別人請使用者做的事。「把 X 寄出去」「週五前完成 X」「答應 X 給回覆」是 todo
+            - note：只是資訊、金額入帳、頻率說明或別人的狀況
             """
         default:
             return """
@@ -197,12 +197,22 @@ enum Organizer {
                 }
             }
             // 時間改從原文那一行抓：對應到最像的原文行（模型改寫時常把「今天」「明天」拿掉）
+            // 但若一行裡拆出多件事，優先對應那一個子句，避免沒寫時間的子句誤繼承別的子句的日期
             let lines = chunk.components(separatedBy: .newlines)
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
             for i in chunkItems.indices {
                 let key = (chunkItems[i].source ?? "") + chunkItems[i].text
-                chunkItems[i].source = lines.count == 1 ? lines[0]
+                let bestLine = lines.count == 1 ? lines[0]
                     : lines.max { similarity($0, key) < similarity($1, key) }.flatMap { similarity($0, key) >= 0.3 ? $0 : nil }
+                if let line = bestLine, chunkItems.count > 1 {
+                    let clauses = Aspect.clauses(line)
+                    if clauses.count > 1, let bestClause = clauses.max(by: { similarity($0, key) < similarity($1, key) }),
+                       similarity(bestClause, key) >= 0.3 {
+                        chunkItems[i].source = bestClause
+                        continue
+                    }
+                }
+                chunkItems[i].source = bestLine
             }
             output.items += chunkItems
         }

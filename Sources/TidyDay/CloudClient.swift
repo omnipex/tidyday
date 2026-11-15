@@ -229,24 +229,24 @@ enum CloudClient {
         case .apple:
             return []
         case .openai:
-            let data = try await send(c.base + "/models", headers: ["Authorization": "Bearer \(key)"])
+            let data = try await send(c.base + "/models", headers: ["Authorization": "Bearer \(key)"], timeout: 20)
             return ids(data, list: "data", field: "id").sorted()
         case .openrouter:
-            let data = try await send("https://openrouter.ai/api/v1/models", headers: ["Authorization": "Bearer \(key)"])
+            let data = try await send("https://openrouter.ai/api/v1/models", headers: ["Authorization": "Bearer \(key)"], timeout: 20)
             return ids(data, list: "data", field: "id").sorted()
         case .anthropic:
             let data = try await send("https://api.anthropic.com/v1/models?limit=100",
-                                      headers: ["x-api-key": key, "anthropic-version": "2026-10-21"])
+                                      headers: ["x-api-key": key, "anthropic-version": "2026-10-21"], timeout: 20)
             return ids(data, list: "data", field: "id")
         case .gemini:
             let data = try await send("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
-                                      headers: ["x-goog-api-key": key])
+                                      headers: ["x-goog-api-key": key], timeout: 20)
             let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
             return (json?["models"] as? [[String: Any]] ?? [])
                 .filter { ($0["supportedGenerationMethods"] as? [String] ?? []).contains("generateContent") }
                 .compactMap { ($0["name"] as? String)?.replacingOccurrences(of: "models/", with: "") }
         case .ollama:
-            let data = try await send(c.base + "/api/tags")
+            let data = try await send(c.base + "/api/tags", timeout: 10)
             return ids(data, list: "models", field: "name").sorted()
         }
     }
@@ -254,9 +254,10 @@ enum CloudClient {
     // MARK: - HTTP 與解析
 
     private static func send(_ urlString: String, method: String = "GET",
-                             headers: [String: String] = [:], body: [String: Any]? = nil) async throws -> Data {
+                             headers: [String: String] = [:], body: [String: Any]? = nil,
+                             timeout: TimeInterval = 180) async throws -> Data {
         guard let url = URL(string: urlString) else { throw CloudError.badResponse("bad URL: \(urlString)") }
-        var req = URLRequest(url: url, timeoutInterval: 180)
+        var req = URLRequest(url: url, timeoutInterval: timeout)
         req.httpMethod = method
         headers.forEach { req.setValue($0.value, forHTTPHeaderField: $0.key) }
         if let body {
@@ -323,6 +324,7 @@ enum Keychain {
         guard !v.isEmpty else { return }
         var q = query(account)
         q[kSecValueData as String] = Data(v.utf8)
+        q[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
         SecItemAdd(q as CFDictionary, nil)
     }
 }

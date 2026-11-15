@@ -7,6 +7,7 @@ struct SettingsPanel: View {
     @State private var model = ""
     @State private var baseURL = ""
     @State private var apiKey = ""
+    @State private var showKey = false
     @State private var models: [String] = []
     @State private var loadingModels = false
     @State private var testing = false
@@ -40,13 +41,29 @@ struct SettingsPanel: View {
                     }
 
                     if engine == .apple {
-                        notice(s.appleInfo, systemImage: "lock.shield", tint: .green)
+                        if let reason = Organizer.unavailableReason(s, engine: .apple) {
+                            notice(reason, systemImage: "exclamationmark.triangle", tint: .orange)
+                        } else {
+                            notice(s.appleInfo, systemImage: "lock.shield", tint: .green)
+                        }
                     } else {
                         if engine.needsKey {
                             field(s.apiKey, note: s.keychainNote) {
-                                SecureField("sk-…", text: $apiKey)
+                                HStack(spacing: 4) {
+                                    Group {
+                                        if showKey {
+                                            TextField("sk-…", text: $apiKey)
+                                        } else {
+                                            SecureField("sk-…", text: $apiKey)
+                                        }
+                                    }
                                     .textFieldStyle(.plain)
-                                    .modifier(FieldStyle())
+                                    IconButton(systemName: showKey ? "eye.slash" : "eye",
+                                               help: showKey ? s.hideKey : s.showKey, size: 22) {
+                                        showKey.toggle()
+                                    }
+                                }
+                                .modifier(FieldStyle())
                             }
                         }
                         if engine.hasBaseURL {
@@ -58,9 +75,19 @@ struct SettingsPanel: View {
                         }
                         field(s.modelLabel) {
                             HStack(spacing: 6) {
-                                TextField(engine.modelPlaceholder, text: $model)
-                                    .textFieldStyle(.plain)
-                                    .modifier(FieldStyle())
+                                HStack(spacing: 4) {
+                                    TextField(engine.modelPlaceholder, text: $model)
+                                        .textFieldStyle(.plain)
+                                    if model.isEmpty && !engine.modelPlaceholder.isEmpty {
+                                        Button(engine.modelPlaceholder) { model = engine.modelPlaceholder }
+                                            .buttonStyle(.plain)
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundStyle(Theme.accent)
+                                            .padding(.horizontal, 6).padding(.vertical, 2)
+                                            .background(Capsule().fill(Theme.accent.opacity(0.12)))
+                                    }
+                                }
+                                .modifier(FieldStyle())
                                 if models.isEmpty {
                                     Button(action: loadModels) {
                                         if loadingModels { ProgressView().controlSize(.small) } else { Text(s.loadModels) }

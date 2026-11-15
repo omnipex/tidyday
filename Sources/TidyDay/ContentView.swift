@@ -6,16 +6,17 @@ import ServiceManagement
 /// 不用 accentColor：按鈕停用時 macOS 會把它變灰
 enum Theme {
     /// 輸入框、分頁軌道：半透明疊層，透出後面的毛玻璃
-    static let field = adaptive(light: (0x000000, 0.04), dark: (0xFFFFFF, 0.06))
-    static let card = adaptive(light: (0x000000, 0.05), dark: (0xFFFFFF, 0.06))
-    static let segment = adaptive(light: (0xFFFFFF, 0.85), dark: (0xFFFFFF, 0.14))
+    static let field = adaptive(light: (0x000000, 0.045), dark: (0xFFFFFF, 0.075))
+    static let card = adaptive(light: (0x000000, 0.05), dark: (0xFFFFFF, 0.075))
+    static let segment = adaptive(light: (0xFFFFFF, 0.88), dark: (0xFFFFFF, 0.16))
     static let hover = Color.primary.opacity(0.07)
-    static let stroke = Color.primary.opacity(0.10)
+    static let stroke = Color.primary.opacity(0.11)
+    static let panelBorder = adaptive(light: (0x000000, 0.08), dark: (0xFFFFFF, 0.14))
     static let accent = Color(nsColor: .systemBlue)
     static let radius: CGFloat = 10
     static let hairline = Color.primary.opacity(0.08)
-    /// 面板底色：淺色模式在毛玻璃上疊一層白，後面是深色視窗時才不會整片發灰；深色模式維持透明
-    static let panelTint = adaptive(light: (0xFFFFFF, 0.62), dark: (0x000000, 0.0))
+    /// 面板底色：淺色模式在毛玻璃上疊一層白，後面是深色視窗時才不會整片發灰；深色模式疊微深底提昇層次
+    static let panelTint = adaptive(light: (0xFFFFFF, 0.65), dark: (0x121214, 0.28))
 
     static func color(_ k: Kind) -> Color {
         switch k {
@@ -64,11 +65,14 @@ struct ContentView: View {
     @AppStorage(Engine.storageKey) private var engineRaw = Engine.apple.rawValue
     @State private var showSettings = false
     @State private var addingKind: Kind?
+    @State private var searching = false
+    @State private var searchQuery = ""
     @AppStorage(GlobalHotKey.storageKey) private var hotKeyEnabled = true
     @AppStorage("layout") private var layoutRaw = "list"
     @AppStorage("collapsedSections") private var collapsedRaw = ""
     @Environment(\.colorScheme) private var colorScheme
     @FocusState private var inputFocused: Bool
+    @FocusState private var searchFocused: Bool
 
     private var isToday: Bool { day == Store.today }
     private var lang: AppLanguage { AppLanguage(rawValue: langRaw) ?? .system }
@@ -96,6 +100,7 @@ struct ContentView: View {
         }
         .frame(width: 380, height: 640)
         .background(Theme.panelTint)
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.panelBorder, lineWidth: 1).allowsHitTesting(false))
         .environment(\.appLanguage, lang)
         .environment(\.locale, lang.locale)
         .onAppear { Appearance(rawValue: appearanceRaw)?.apply() }
@@ -107,37 +112,61 @@ struct ContentView: View {
             header
                 .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 12)
             separator.padding(.bottom, 12)
-            if confirmClear {
-                clearConfirmCard
-                    .padding(.horizontal, 16).padding(.bottom, 12)
-                    .transition(.opacity)
-            }
-            inputCard
-                .padding(.horizontal, 16)
-            if store.summary(on: day) != nil || editingSummary {
-                summaryCard
-                    .padding(.horizontal, 16).padding(.top, 12)
-            }
-            if isTabs {
-                CalendarCard()
-                    .padding(.horizontal, 16).padding(.top, 12)
-                tabs
-                    .padding(.horizontal, 16).padding(.top, 14)
-                list
+            if searching {
+                searchBar
+                    .padding(.horizontal, 16).padding(.bottom, 8)
+                searchResultsList
+                footer
             } else {
-                sections
-                    .padding(.top, 6)
+                if confirmClear {
+                    clearConfirmCard
+                        .padding(.horizontal, 16).padding(.bottom, 12)
+                        .transition(.opacity)
+                }
+                inputCard
+                    .padding(.horizontal, 16)
+                if store.summary(on: day) != nil || editingSummary {
+                    summaryCard
+                        .padding(.horizontal, 16).padding(.top, 12)
+                }
+                if isTabs {
+                    CalendarCard()
+                        .padding(.horizontal, 16).padding(.top, 12)
+                    tabs
+                        .padding(.horizontal, 16).padding(.top, 14)
+                    list
+                } else {
+                    sections
+                        .padding(.top, 6)
+                }
+                footer
             }
-            footer
+        }
+        .background {
+            // 支援 ⌘Z 復原上一步刪除／勾選／清除
+            Button("") { performUndo() }
+                .keyboardShortcut("z", modifiers: .command)
+                .opacity(0)
+                .disabled(undoClear == nil && !store.canUndo)
         }
         .onReceive(NotificationCenter.default.publisher(for: TidyMessage.name)) { n in
             if let text = n.userInfo?["text"] as? String {
                 show(text, error: n.userInfo?["error"] as? Bool ?? false)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: TidyMessage.jumpToDay)) { n in
+            if let target = n.object as? String {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    searching = false
+                    searchQuery = ""
+                    day = target
+                }
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: GlobalHotKey.focusInput)) { _ in
             // 快捷鍵叫出時：回到今天、游標放進輸入框
             showSettings = false
+            searching = false
             day = Store.today
             inputFocused = true
         }
@@ -177,15 +206,22 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .popover(isPresented: $showDays, arrowEdge: .bottom) { dayPicker }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 6)
             engineChip
                 .fixedSize()
-                .padding(.trailing, 4)
+                .padding(.trailing, 2)
             if !isToday {
                 IconButton(systemName: "arrow.uturn.backward", help: s.backToToday + "（⌘T）") { day = Store.today }
                     .keyboardShortcut("t", modifiers: .command)
                     .transition(.opacity)
             }
+            IconButton(systemName: "magnifyingglass", help: s.search + "（⌘F）") {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    searching.toggle()
+                    if searching { searchFocused = true } else { searchQuery = "" }
+                }
+            }
+            .keyboardShortcut("f", modifiers: .command)
             IconButton(systemName: "chevron.left", help: s.prevDay) { shiftDay(-1) }
             IconButton(systemName: "chevron.right", help: s.nextDay) { shiftDay(1) }
                 .disabled(isToday)
@@ -252,6 +288,61 @@ struct ContentView: View {
         .frame(width: 230)
     }
 
+    // MARK: - 搜尋
+
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(Theme.accent)
+            TextField(s.searchPlaceholder, text: $searchQuery)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .focused($searchFocused)
+                .onExitCommand {
+                    withAnimation(.easeOut(duration: 0.15)) { searching = false; searchQuery = "" }
+                }
+            if !searchQuery.isEmpty {
+                IconButton(systemName: "xmark.circle.fill", help: s.clear, size: 20) { searchQuery = "" }
+            }
+            Button(s.cancel) {
+                withAnimation(.easeOut(duration: 0.15)) { searching = false; searchQuery = "" }
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.field))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.accent.opacity(0.85), lineWidth: 1.5))
+    }
+
+    private var searchResultsList: some View {
+        let results = store.search(searchQuery)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
+                if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass").font(.system(size: 13)).foregroundStyle(.tertiary)
+                        Text(s.searchPlaceholder).font(.system(size: 13)).foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 12)
+                } else if results.isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "doc.text.magnifyingglass").font(.system(size: 13)).foregroundStyle(.secondary)
+                        Text(s.noSearchResults).font(.system(size: 13)).foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 12)
+                } else {
+                    ForEach(results) { EntryRow(item: $0, viewingDay: "") }
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+        }
+        .frame(maxHeight: .infinity)
+    }
+
     // MARK: - 輸入
 
     /// 輸入列：參考 Fantastical 選單列小視窗與 Todoist Quick Add —— 平常只有一行，按鈕放在框內；
@@ -288,15 +379,11 @@ struct ContentView: View {
                     Label(message, systemImage: isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                         .font(.system(size: 11.5))
                         .foregroundStyle(isError ? Color.orange : .secondary)
-                    if let undo = undoClear {
-                        Button(s.undo) {
-                            store.restoreDay(undo.day, undo.log)
-                            undoClear = nil
-                            show(s.restored)
-                        }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
+                    if undoClear != nil || store.canUndo {
+                        Button(s.undo) { performUndo() }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .foregroundStyle(Theme.accent)
                     }
                 }
                 .transition(.opacity)
@@ -402,6 +489,11 @@ struct ContentView: View {
                     .foregroundStyle(Theme.accent)
                 Spacer()
                 if !editingSummary, let summary = store.summary(on: day) {
+                    IconButton(systemName: "doc.on.doc", help: s.copySummary, size: 22) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(summary, forType: .string)
+                        show(s.copied)
+                    }
                     IconButton(systemName: "pencil", help: s.editSummary, size: 22) {
                         summaryText = summary; editingSummary = true
                     }
@@ -674,6 +766,16 @@ struct ContentView: View {
         }
     }
 
+    private func performUndo() {
+        if let undo = undoClear {
+            store.restoreDay(undo.day, undo.log)
+            undoClear = nil
+            show(s.restored)
+        } else if store.performUndo() {
+            show(s.restored)
+        }
+    }
+
     private func shiftDay(_ n: Int) {
         let d = Calendar.current.date(byAdding: .day, value: n, to: Store.date(day)) ?? Date()
         day = min(Store.key(d), Store.today)
@@ -692,10 +794,17 @@ struct ContentView: View {
     }
 
     /// 標題列：前綴小一號、灰色，日期粗體
-    private func headerText(for key: String) -> Text {
+    @ViewBuilder
+    private func headerText(for key: String) -> some View {
         let date = Text(lang.shortDayTitle(key)).font(.system(size: 15, weight: .semibold))
-        guard let label = relativeLabel(for: key) else { return date }
-        return Text("\(label)  ").font(.system(size: 12, weight: .medium)).foregroundColor(.secondary) + date
+        if let label = relativeLabel(for: key) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(label).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                date
+            }
+        } else {
+            date
+        }
     }
 
     /// 日期選單每一列都寫出日期，今天那列是「今天 · 11月4日週三」，看得出點了會跳到哪天
@@ -961,33 +1070,24 @@ struct DueChip: View {
     /// 只顯示幾點；整天的不顯示文字（只剩行事曆圖示）
     static func timeLabel(_ date: Date, allDay: Bool, locale: Locale) -> String? {
         guard !allDay else { return nil }
-        let f = DateFormatter()
-        f.locale = locale
-        f.timeStyle = .short
-        return f.string(from: date)
+        return AppLanguage.cachedFormatter(locale: locale, timeStyle: .short).string(from: date)
     }
 
     /// 今天、明天用相對說法（今天 15:00）；其他天寫日期與星期；整天的不寫時間
     static func label(_ date: Date, allDay: Bool, locale: Locale) -> String? {
         let cal = Calendar.current
         if cal.isDateInToday(date) || cal.isDateInTomorrow(date) || cal.isDateInYesterday(date) {
-            let f = DateFormatter()
-            f.locale = locale
-            f.dateStyle = .medium
-            f.timeStyle = allDay ? .none : .short
-            f.doesRelativeDateFormatting = true
-            return f.string(from: date)
+            return AppLanguage.cachedFormatter(locale: locale, dateStyle: .medium,
+                                               timeStyle: allDay ? .none : .short, relative: true).string(from: date)
         }
-        let f = DateFormatter()
-        f.locale = locale
-        f.setLocalizedDateFormatFromTemplate(allDay ? "MdEEE" : "MdEEEjm")
-        return f.string(from: date)
+        return AppLanguage.cachedFormatter(locale: locale, template: allDay ? "MdEEE" : "MdEEEjm").string(from: date)
     }
 }
 
 /// 面板內元件要顯示提示訊息時，透過通知交給 ContentView 的訊息列
 enum TidyMessage {
     static let name = Notification.Name("TidyDayMessage")
+    static let jumpToDay = Notification.Name("TidyDayJumpToDay")
     static func post(_ text: String, error: Bool = false) {
         NotificationCenter.default.post(name: name, object: nil, userInfo: ["text": text, "error": error])
     }
@@ -1024,31 +1124,53 @@ struct EntryRow: View {
                 IconButton(systemName: "checkmark", help: lang.strings.saveHint, size: 22, action: save)
                 IconButton(systemName: "xmark", help: lang.strings.cancelHint, size: 22) { editing = false }
             } else {
-                Text(item.entry.text)
-                    .font(.system(size: 13))
-                    .foregroundStyle(item.entry.kind == .done ? .secondary : .primary)
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .onTapGesture(count: 2, perform: startEditing)
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    if item.entry.pinned == true && item.entry.kind != .done {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 9.5, weight: .bold))
+                            .foregroundStyle(Theme.color(item.entry.kind))
+                            .rotationEffect(.degrees(45))
+                    }
+                    Text(item.entry.text)
+                        .font(.system(size: 13))
+                        .foregroundStyle(item.entry.kind == .done ? .secondary : .primary)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture(count: 2, perform: startEditing)
 
                 if let due = item.entry.due, item.entry.kind != .done {
                     DueChip(item: item, due: due, allDay: item.entry.allDay ?? false, timeOnly: hideDueDate, rowHovering: hovering)
                 }
                 if hovering {
                     HStack(spacing: 0) {
+                        if item.entry.kind != .done {
+                            IconButton(systemName: item.entry.pinned == true ? "pin.slash" : "pin",
+                                       help: item.entry.pinned == true ? lang.strings.unpin : lang.strings.pin,
+                                       size: 22) {
+                                withAnimation(.easeOut(duration: 0.15)) { store.togglePin(for: item) }
+                            }
+                        }
                         IconButton(systemName: "pencil", help: lang.strings.edit, size: 22, action: startEditing)
                         IconButton(systemName: "trash", help: lang.strings.delete, size: 22) {
                             withAnimation { store.delete(item) }
+                            TidyMessage.post(lang.strings.deletedItem)
                         }
                     }
-                } else if item.day != viewingDay && item.entry.due == nil {
-                    // 前幾天延續下來的待辦：右側小字標出原本的日期
-                    Label(lang.shortDate(item.day), systemImage: "arrow.turn.down.right")
-                        .labelStyle(.titleAndIcon)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.tertiary)
+                } else if item.day != viewingDay && (item.entry.due == nil || viewingDay.isEmpty) {
+                    // 前幾天延續下來的待辦（或搜尋結果）：右側小字標出原本的日期，點擊可跳到那天
+                    Button {
+                        NotificationCenter.default.post(name: TidyMessage.jumpToDay, object: item.day)
+                    } label: {
+                        Label(lang.shortDate(item.day), systemImage: "arrow.turn.down.right")
+                            .labelStyle(.titleAndIcon)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(lang.strings.fromDay(lang.shortDate(item.day)))
                 }
             }
         }
@@ -1065,6 +1187,20 @@ struct EntryRow: View {
         .onHover { hovering = $0 }
         .contextMenu {
             Button(lang.strings.edit, action: startEditing)
+            if item.entry.kind != .done {
+                Button(item.entry.pinned == true ? lang.strings.unpin : lang.strings.pin) {
+                    withAnimation { store.togglePin(for: item) }
+                }
+                Menu(lang.strings.scheduleMenu) {
+                    Button(lang.strings.today.capitalized) { schedule(daysFromToday: 0) }
+                    Button(lang.strings.scheduleTomorrow) { schedule(daysFromToday: 1) }
+                    Button(lang.strings.scheduleNextWeek) { scheduleNextMonday() }
+                    if item.entry.due != nil {
+                        Divider()
+                        Button(lang.strings.clearSchedule) { store.setDue(nil, for: item) }
+                    }
+                }
+            }
             ForEach(Kind.allCases.filter { $0 != item.entry.kind }, id: \.self) { k in
                 Button(lang.strings.changeTo(lang.strings.label(k))) { store.setKind(k, for: item) }
             }
@@ -1073,7 +1209,10 @@ struct EntryRow: View {
                 NSPasteboard.general.setString(item.entry.text, forType: .string)
             }
             Divider()
-            Button(lang.strings.delete, role: .destructive) { store.delete(item) }
+            Button(lang.strings.delete, role: .destructive) {
+                withAnimation { store.delete(item) }
+                TidyMessage.post(lang.strings.deletedItem)
+            }
         }
     }
 
@@ -1125,6 +1264,23 @@ struct EntryRow: View {
     private func save() {
         store.setText(text, for: item)
         editing = false
+    }
+
+    private func schedule(daysFromToday: Int) {
+        let cal = Calendar.current
+        guard let d = cal.date(byAdding: .day, value: daysFromToday, to: cal.startOfDay(for: Date())) else { return }
+        store.setDue(d, allDay: true, for: item)
+        if daysFromToday > 0 { NotificationCenter.default.post(name: CalendarCard.reveal, object: d) }
+    }
+
+    private func scheduleNextMonday() {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let weekday = cal.component(.weekday, from: today) // 1 = Sun, 2 = Mon ...
+        let delta = ((9 - weekday - 1) % 7) + 1
+        guard let d = cal.date(byAdding: .day, value: delta, to: today) else { return }
+        store.setDue(d, allDay: true, for: item)
+        NotificationCenter.default.post(name: CalendarCard.reveal, object: d)
     }
 }
 

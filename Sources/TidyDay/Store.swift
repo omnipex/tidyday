@@ -16,6 +16,8 @@ struct Entry: Codable, Identifiable, Equatable {
     var allDay: Bool?
     /// 已加入行事曆的事件 ID
     var eventID: String?
+    /// 是否置頂
+    var pinned: Bool?
 
     /// source：貼上的原文那一行。項目文字裡沒有時間（模型把「今天」拿掉了）時，改從原文抓
     init(kind: Kind, text: String, source: String? = nil) {
@@ -52,9 +54,11 @@ struct DayEntry: Identifiable {
 @MainActor
 final class Store: ObservableObject {
     @Published private(set) var days: [String: DayLog] = [:]
+    @Published private(set) var canUndo = false
+    private var undoSnapshot: (day: String, log: DayLog)?
     let dir: URL
 
-    nonisolated(unsafe) private static let keyFormatter: DateFormatter = {
+    nonisolated private static let keyFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"
@@ -91,26 +95,25 @@ final class Store: ObservableObject {
 
     /// 行事曆功能加入前建立的項目沒有時間：今天建立的補抓一次（舊項目的「明天」不能用今天重算，所以只補今天的）
     private func backfillDueDates() {
-        for (day, log) in days {
-            var changed = false
-            var log = log
-            for i in log.entries.indices {
-                let e = log.entries[i]
-                guard e.due == nil, Calendar.current.isDateInToday(e.createdAt) else { continue }
-                // 也看當天貼上的原文：模型可能把「今天」拿掉了
-                let rawLines = log.raw.flatMap { $0.text.components(separatedBy: .newlines) }
-                let source = rawLines.max { Organizer.similarity($0, e.text) < Organizer.similarity($1, e.text) }
-                    .flatMap { Organizer.similarity($0, e.text) >= 0.3 ? $0 : nil }
-                guard let hint = DateHint.detect(e.text, kind: e.kind) ?? source.flatMap({ DateHint.detect($0, kind: e.kind) })
-                else { continue }
-                log.entries[i].due = hint.date
-                log.entries[i].allDay = hint.allDay
-                changed = true
-            }
-            if changed {
-                days[day] = log
-                save(day)
-            }
+        let today = Self.today
+        guard var log = days[today] else { return }
+        var changed = false
+        let rawLines = log.raw.flatMap { $0.text.components(separatedBy: .newlines) }
+        for i in log.entries.indices {
+            let e = log.entries[i]
+            guard e.due == nil, Calendar.current.isDateInToday(e.createdAt) else { continue }
+            // 也看當天貼上的原文：模型可能把「今天」拿掉了
+            let source = rawLines.max { Organizer.similarity($0, e.text) < Organizer.similarity($1, e.text) }
+                .flatMap { Organizer.similarity($0, e.text) >= 0.3 ? $0 : nil }
+            guard let hint = DateHint.detect(e.text, kind: e.kind) ?? source.flatMap({ DateHint.detect($0, kind: e.kind) })
+            else { continue }
+            log.entries[i].due = hint.date
+            log.entries[i].allDay = hint.allDay
+            changed = true
+        }
+        if changed {
+            days[today] = log
+            save(today)
         }
     }
 
@@ -132,10 +135,15 @@ final class Store: ObservableObject {
     }
 
     /// 「現在要處理」的待辦：沒寫日期的、這天到期的、已經過期的。排到之後的只放在行事曆（參考 Things 3 的 Today／Upcoming）。
-    /// 選單列徽章與「待辦」標題都用這個數字，兩者永遠一致
+    /// 選單列徽章與「待辦」標題都用這個數字，兩者永遠一致；置頂項目排在最前面
     func actionableTodos(on day: String) -> [DayEntry] {
         let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: Store.date(day)) ?? Store.date(day)
-        return openTodos(upTo: day).filter { ($0.entry.due ?? .distantPast) < endOfDay }
+        let list = openTodos(upTo: day).filter { ($0.entry.due ?? .distantPast) < endOfDay }
+        return list.enumerated().sorted { a, b in
+            let pa = a.element.entry.pinned == true
+            let pb = b.element.entry.pinned == true
+            return pa != pb ? pa : a.offset < b.offset
+        }.map(\.element)
     }
 
     /// 行事曆的「排程」，依日期分組（key 是那天的 00:00）：排到明天以後的待辦，以及有日期的筆記。
@@ -166,12 +174,40 @@ final class Store: ObservableObject {
 
     /// 筆記區只放沒有日期的筆記；有日期的放在行事曆，同一筆不會出現兩次
     func notes(on day: String) -> [DayEntry] {
-        (days[day]?.entries ?? []).filter { $0.kind == .note && $0.due == nil }.map { DayEntry(day: day, entry: $0) }
+        let list = (days[day]?.entries ?? []).filter { $0.kind == .note && $0.due == nil }.map { DayEntry(day: day, entry: $0) }
+        return list.enumerated().sorted { a, b in
+            let pa = a.element.entry.pinned == true
+            let pb = b.element.entry.pinned == true
+            return pa != pb ? pa : a.offset < b.offset
+        }.map(\.element)
+    }
+
+    /// 跨日搜尋所有項目（由新到舊）
+    func search(_ query: String) -> [DayEntry] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return [] }
+        return days.keys.sorted(by: >).flatMap { d in
+            (days[d]?.entries ?? []).filter { $0.text.localizedStandardContains(q) }.map { DayEntry(day: d, entry: $0) }
+        }
     }
 
     func summary(on day: String) -> String? { days[day]?.summary }
 
     // MARK: - 修改
+
+    private func recordUndo(for day: String) {
+        undoSnapshot = (day, days[day] ?? DayLog())
+        canUndo = true
+    }
+
+    func performUndo() -> Bool {
+        guard let snap = undoSnapshot else { return false }
+        days[snap.day] = snap.log.entries.isEmpty && snap.log.summary == nil && snap.log.raw.isEmpty ? nil : snap.log
+        save(snap.day)
+        undoSnapshot = nil
+        canUndo = false
+        return true
+    }
 
     func apply(_ output: ParseOutput, raw: String, to day: String, openTodos: [DayEntry]) {
         var log = days[day] ?? DayLog()
@@ -193,9 +229,23 @@ final class Store: ObservableObject {
     }
 
     func setKind(_ kind: Kind, for item: DayEntry) {
+        recordUndo(for: item.day)
         mutate(item) { e in
             e.doneAt = (e.kind == .todo && kind == .done) ? Date() : nil
             e.kind = kind
+        }
+    }
+
+    func togglePin(for item: DayEntry) {
+        mutate(item) { e in
+            e.pinned = (e.pinned == true) ? nil : true
+        }
+    }
+
+    func setDue(_ date: Date?, allDay: Bool = true, for item: DayEntry) {
+        mutate(item) { e in
+            e.due = date
+            e.allDay = date == nil ? nil : allDay
         }
     }
 
@@ -218,6 +268,7 @@ final class Store: ObservableObject {
     }
 
     func delete(_ item: DayEntry) {
+        recordUndo(for: item.day)
         days[item.day]?.entries.removeAll { $0.id == item.id }
         save(item.day)
     }
@@ -243,6 +294,7 @@ final class Store: ObservableObject {
     /// 清除一天：檔案丟到垃圾桶（Finder 還救得回來），回傳被清掉的內容給「復原」用
     @discardableResult
     func clearDay(_ day: String) -> DayLog? {
+        recordUndo(for: day)
         let removed = days[day]
         days[day] = nil
         let url = dir.appendingPathComponent("\(day).json")
@@ -255,6 +307,8 @@ final class Store: ObservableObject {
     func restoreDay(_ day: String, _ log: DayLog) {
         days[day] = log
         save(day)
+        undoSnapshot = nil
+        canUndo = false
     }
 
     /// 有紀錄的日期（新到舊）與項目數
@@ -277,13 +331,24 @@ final class Store: ObservableObject {
         let s = lang.strings
         var md = "# \(lang.dayTitle(day))\n"
         if let summary = summary(on: day) { md += "\n## \(s.summaryTitle)\n\(summary)\n" }
+        // 匯出包含當天全部筆記（含帶有日期的筆記），不會因為放在行事曆而遺漏
+        let allDayNotes = (days[day]?.entries ?? []).filter { $0.kind == .note }.map { DayEntry(day: day, entry: $0) }
         let sections: [(String, [DayEntry], String)] = [
             (s.done, completed(on: day), "- "),
             (s.todo, openTodos(upTo: day), "- [ ] "),
-            (s.note, notes(on: day), "- "),
+            (s.note, allDayNotes, "- "),
         ]
         for (name, items, bullet) in sections where !items.isEmpty {
-            md += "\n## \(name)\n" + items.map { bullet + $0.entry.text }.joined(separator: "\n") + "\n"
+            let lines = items.map { item -> String in
+                var line = bullet + item.entry.text
+                if item.entry.kind != .done, let due = item.entry.due,
+                   let label = DueChip.label(due, allDay: item.entry.allDay ?? true, locale: lang.locale),
+                   !item.entry.text.contains(label) {
+                    line += " (\(label))"
+                }
+                return line
+            }
+            md += "\n## \(name)\n" + lines.joined(separator: "\n") + "\n"
         }
         return md
     }
