@@ -140,6 +140,7 @@ struct Strings {
     var saveHint: String
     var cancelHint: String
     var itemCount: (Int) -> String
+    var summaryOnly: String
     var none: String
 
     var modelSettings: String
@@ -240,7 +241,7 @@ extension Strings {
         modelUnavailable: "本地模型無法使用",
         markDone: "標記完成", markTodo: "改回待辦", edit: "編輯", delete: "刪除", copy: "複製",
         changeTo: { "改成\($0)" }, add: { "新增\($0)" }, addPlaceholder: { "新增\($0)，按 Enter 儲存" },
-        saveHint: "儲存（Enter）", cancelHint: "取消（Esc）", itemCount: { "\($0) 項" }, none: "（無）",
+        saveHint: "儲存（Enter）", cancelHint: "取消（Esc）", itemCount: { "\($0) 項" }, summaryOnly: "只有總結", none: "（無）",
         modelSettings: "模型設定", engineLabel: "整理用的模型", engineApple: "Mac 本地模型",
         appleInfo: "使用 Mac 內建的 Apple Intelligence。免費、不用網路，內容不會離開這台電腦。",
         apiKey: "API Key", keychainNote: "存在 macOS 鑰匙圈，不會寫進設定檔", baseURL: "Base URL",
@@ -285,7 +286,7 @@ extension Strings {
         modelUnavailable: "本地模型无法使用",
         markDone: "标记完成", markTodo: "改回待办", edit: "编辑", delete: "删除", copy: "复制",
         changeTo: { "改成\($0)" }, add: { "新增\($0)" }, addPlaceholder: { "新增\($0)，按 Enter 保存" },
-        saveHint: "保存（Enter）", cancelHint: "取消（Esc）", itemCount: { "\($0) 项" }, none: "（无）",
+        saveHint: "保存（Enter）", cancelHint: "取消（Esc）", itemCount: { "\($0) 项" }, summaryOnly: "只有总结", none: "（无）",
         modelSettings: "模型设置", engineLabel: "用于整理的模型", engineApple: "Mac 本地模型",
         appleInfo: "使用 Mac 内置的 Apple Intelligence。免费、无需联网，内容不会离开这台电脑。",
         apiKey: "API Key", keychainNote: "保存在 macOS 钥匙串，不会写入配置文件", baseURL: "Base URL",
@@ -332,7 +333,7 @@ extension Strings {
         markDone: "Mark as done", markTodo: "Mark as to-do", edit: "Edit", delete: "Delete", copy: "Copy",
         changeTo: { "Move to \($0)" }, add: { "Add to \($0)" }, addPlaceholder: { "Add to \($0), press Enter" },
         saveHint: "Save (Enter)", cancelHint: "Cancel (Esc)",
-        itemCount: { "\($0) item\($0 == 1 ? "" : "s")" }, none: "(none)",
+        itemCount: { "\($0) item\($0 == 1 ? "" : "s")" }, summaryOnly: "Summary only", none: "(none)",
         modelSettings: "Model settings", engineLabel: "Model used for organizing", engineApple: "On-device (Mac)",
         appleInfo: "Uses Apple Intelligence built into your Mac. Free, works offline, and nothing leaves this Mac.",
         apiKey: "API key", keychainNote: "Stored in the macOS Keychain, never in a settings file", baseURL: "Base URL",
@@ -377,7 +378,7 @@ extension Strings {
         modelUnavailable: "オンデバイスモデルを利用できません",
         markDone: "完了にする", markTodo: "ToDo に戻す", edit: "編集", delete: "削除", copy: "コピー",
         changeTo: { "\($0)に移動" }, add: { "\($0)を追加" }, addPlaceholder: { "\($0)を追加（Enter で保存）" },
-        saveHint: "保存（Enter）", cancelHint: "キャンセル（Esc）", itemCount: { "\($0) 件" }, none: "（なし）",
+        saveHint: "保存（Enter）", cancelHint: "キャンセル（Esc）", itemCount: { "\($0) 件" }, summaryOnly: "まとめのみ", none: "（なし）",
         modelSettings: "モデル設定", engineLabel: "整理に使うモデル", engineApple: "Mac のオンデバイスモデル",
         appleInfo: "Mac 内蔵の Apple Intelligence を使います。無料・オフラインで動作し、内容はこの Mac から出ません。",
         apiKey: "API キー", keychainNote: "macOS のキーチェーンに保存され、設定ファイルには書き込まれません", baseURL: "Base URL",

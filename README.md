@@ -82,6 +82,46 @@ eval/run.sh 2 mi-    # only the cases whose id starts with mi-
 
 The last run scored 96.7% (the previous single-prompt version scored 84.2%).
 
+## Use with AI assistants (MCP)
+
+TidyDay includes an [MCP](https://modelcontextprotocol.io) server, so assistants such as Claude Desktop, Claude Code and Cursor can read and update your log. The server is the app itself run with `--mcp`. It uses the same data folder and the same organizing engine as the app, and the app picks up changes right away.
+
+Claude Code:
+
+```sh
+claude mcp add tidyday -- /Applications/TidyDay.app/Contents/MacOS/TidyDay --mcp
+```
+
+Claude Desktop, Cursor and other clients (`claude_desktop_config.json`, `.cursor/mcp.json`, ...):
+
+```json
+{
+  "mcpServers": {
+    "tidyday": {
+      "command": "/Applications/TidyDay.app/Contents/MacOS/TidyDay",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
+
+If you installed with `./build.sh install`, the path is `~/Applications/TidyDay.app/Contents/MacOS/TidyDay`. Write it out in full, because most clients do not expand `~`.
+
+| Tool | What it does |
+|---|---|
+| `list_days` | Days up to today that have items, with how many items each day has |
+| `get_day` | One day's to-dos, done items, notes, scheduled items and summary |
+| `search` | Find items by text across all days |
+| `add_items` | Add items when the kind is already known, with an optional due date |
+| `organize_text` | Split free-form text into items with TidyDay's organizer |
+| `update_item` | Edit text, complete or reopen, pin, or reschedule an item |
+| `delete_item` | Delete an item |
+| `set_summary` | Replace or remove a day's summary |
+
+Days are written as `yyyy-MM-dd` in your local time zone. Leave the day out to mean today. Set `TIDYDAY_DATA_DIR` in the server's environment to try it on a copy of your data.
+
+The server only talks to the client that started it, over standard input and output. It does not open a network port. With a cloud model selected, `organize_text` sends the text to that provider, just as organizing in the app does.
+
 ## Privacy
 
 - Your entries are stored as one JSON file per day in `~/Library/Application Support/TidyDay/days/`.
@@ -121,3 +161,5 @@ TidyDay 是常駐在 macOS 選單列的小工具。把會議紀錄、聊天內�
 **需要的環境**：Apple 晶片的 Mac、macOS 26 以上；要用本地模型的話，需要開啟 Apple Intelligence。
 
 **安裝**：從 [Releases](../../releases) 下載 DMG，把 TidyDay 拖到「應用程式」。這版還沒有 Apple 開發者簽章，第一次打開會被擋下來，請到「系統設定 → 隱私權與安全性」按「仍要打開」。
+
+**給 AI 助理用（MCP）**：TidyDay 內建 MCP 伺服器，Claude Desktop、Claude Code、Cursor 等工具可以讀取、新增、完成你的紀錄。伺服器就是 app 本身加上 `--mcp` 參數執行，和 app 共用同一份資料和整理引擎，app 開著時也會馬上顯示變動。Claude Code 用 `claude mcp add tidyday -- /Applications/TidyDay.app/Contents/MacOS/TidyDay --mcp` 加入；其他工具的設定檔和工具清單請見上方英文說明的「Use with AI assistants (MCP)」。伺服器只透過標準輸入輸出和啟動它的工具溝通，不會開網路埠。

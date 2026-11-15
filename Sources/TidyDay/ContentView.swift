@@ -275,7 +275,7 @@ struct ContentView: View {
                 ScrollView {
                     VStack(spacing: 2) {
                         ForEach(days, id: \.day) { d in
-                            DayPickerRow(title: pickerTitle(for: d.day), detail: s.itemCount(d.count), selected: d.day == day) {
+                            DayPickerRow(title: pickerTitle(for: d.day), detail: d.count == 0 && d.hasSummary ? s.summaryOnly : s.itemCount(d.count), selected: d.day == day) {
                                 day = d.day; showDays = false
                             }
                         }

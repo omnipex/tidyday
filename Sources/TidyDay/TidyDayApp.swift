@@ -1,7 +1,7 @@
 import SwiftUI
 import ServiceManagement
 
-@main
+/// 進入點在 Launcher.swift（`--mcp` 時改跑 MCP 伺服器）
 struct TidyDayApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 

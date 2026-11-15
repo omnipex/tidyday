@@ -19,6 +19,7 @@ final class StatusController: NSObject {
         item.button?.target = self
         item.button?.action = #selector(togglePanel)
         refreshIcon()
+        store.watchForExternalChanges()
         // 待辦有變動就更新圖示上的數字
         cancellable = store.objectWillChange.sink { [weak self] _ in
             DispatchQueue.main.async { self?.refreshIcon() }

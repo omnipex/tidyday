@@ -4,7 +4,7 @@ set -e
 D=${0:A:h}
 B=$D/build
 rm -rf $B; mkdir -p $B
-for f in $D/../Sources/TidyDay/*.swift; do [ "${f:t}" = TidyDayApp.swift ] || cp $f $B/; done
+for f in $D/../Sources/TidyDay/*.swift; do case "${f:t}" in TidyDayApp.swift|Launcher.swift) ;; *) cp $f $B/ ;; esac; done
 cp $D/Eval.swift $B/main.swift
 swiftc -disable-sandbox -module-cache-path /tmp/swift-module-cache -swift-version 5 -O $B/*.swift -o $B/eval 2>&1 | grep error: || true
 $B/eval "$@"

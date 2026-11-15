@@ -82,15 +82,60 @@ final class Store: ObservableObject {
     }
 
     private func load() {
+        days = readAll()
+        backfillDueDates()
+    }
+
+    private func readAll() -> [String: DayLog] {
         let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
+        var result: [String: DayLog] = [:]
         for url in files where url.pathExtension == "json" {
             guard let data = try? Data(contentsOf: url),
                   let log = try? decoder.decode(DayLog.self, from: data) else { continue }
-            days[url.deletingPathExtension().lastPathComponent] = log
+            result[url.deletingPathExtension().lastPathComponent] = log
         }
-        backfillDueDates()
+        return result
+    }
+
+    /// 重新讀取資料夾：別的程序（MCP 伺服器）改過檔案後呼叫
+    func reload() {
+        let fresh = readAll()
+        // 內容沒變就不發布，避免自己存檔觸發的事件讓畫面重畫
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = .sortedKeys
+        func same(_ a: DayLog?, _ b: DayLog?) -> Bool {
+            (a.flatMap { try? encoder.encode($0) }) == (b.flatMap { try? encoder.encode($0) })
+        }
+        let keys = Set(fresh.keys).union(days.keys)
+        guard keys.contains(where: { !same(fresh[$0], days[$0]) }) else { return }
+        days = fresh
+    }
+
+    private var watcher: DispatchSourceFileSystemObject?
+
+    /// 監看資料夾：MCP 伺服器（另一個程序）寫入時，app 跟著更新，避免之後存檔把對方的修改蓋掉
+    func watchForExternalChanges() {
+        guard watcher == nil else { return }
+        let fd = open(dir.path, O_EVTONLY)
+        guard fd >= 0 else { return }
+        let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: [.write, .rename, .delete], queue: .main)
+        source.setEventHandler { [weak self] in
+            MainActor.assumeIsolated { self?.reload() }
+        }
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        watcher = source
+    }
+
+    /// 依 ID 找項目（跨所有日期）
+    func find(_ id: UUID) -> DayEntry? {
+        for (d, log) in days {
+            if let e = log.entries.first(where: { $0.id == id }) { return DayEntry(day: d, entry: e) }
+        }
+        return nil
     }
 
     /// 行事曆功能加入前建立的項目沒有時間：今天建立的補抓一次（舊項目的「明天」不能用今天重算，所以只補今天的）
@@ -281,13 +326,16 @@ final class Store: ObservableObject {
         save(day)
     }
 
-    func addEntry(_ kind: Kind, text: String, to day: String) {
+    @discardableResult
+    func addEntry(_ kind: Kind, text: String, to day: String) -> Entry? {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
+        guard !t.isEmpty else { return nil }
         var log = days[day] ?? DayLog()
-        log.entries.append(Entry(kind: kind, text: t))
+        let entry = Entry(kind: kind, text: t)
+        log.entries.append(entry)
         days[day] = log
         save(day)
+        return entry
     }
 
     /// 只清掉這一天自己的檔案；之前幾天延續過來的待辦不受影響
@@ -311,12 +359,28 @@ final class Store: ObservableObject {
         canUndo = false
     }
 
-    /// 有紀錄的日期（新到舊）與項目數
-    var recordedDays: [(day: String, count: Int)] {
-        days.keys.sorted(by: >).compactMap { d in
-            let n = days[d]!.entries.count
-            return n > 0 || days[d]!.summary != nil ? (d, n) : nil
+    /// 日期選單用：每天「點進去會看到、屬於那天」的項目數（新到舊）
+    /// - 已完成：算在完成的那天（doneAt），不是記下的那天
+    /// - 待辦、筆記：有日期的算在排定的那天，沒日期的算在記下的那天
+    /// - 從前幾天延續過來的待辦不重複計算
+    /// 只有總結、沒有項目的日子 count 為 0、hasSummary 為 true
+    /// 只列到今天為止；排到未來的事項在行事曆看
+    var recordedDays: [(day: String, count: Int, hasSummary: Bool)] {
+        var counts: [String: Int] = [:]
+        for (d, log) in days {
+            for e in log.entries {
+                let owner: String
+                if e.kind == .done {
+                    owner = e.doneAt.map(Store.key) ?? d
+                } else {
+                    owner = e.due.map(Store.key) ?? d
+                }
+                counts[owner, default: 0] += 1
+            }
         }
+        for (d, log) in days where log.summary != nil && counts[d] == nil { counts[d] = 0 }
+        let today = Store.today
+        return counts.keys.filter { $0 <= today }.sorted(by: >).map { d in (d, counts[d]!, days[d]?.summary != nil) }
     }
 
     private func mutate(_ item: DayEntry, _ change: (inout Entry) -> Void) {
